@@ -13,13 +13,16 @@
   const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
   const SFX_LABELS = { blip: 'Blip', pop: 'Pop', jump: 'Jump', coin: 'Coin', confirm: 'Confirm', error: 'Error', whoosh: 'Whoosh', typing: 'Typing', talk: 'Talk', appear: 'Appear' };
-  const MUSIC_LABELS = { calm: 'Calm', upbeat: 'Upbeat', tense: 'Tense', playful: 'Playful' };
+  const MUSIC_LABELS = { calm: 'Calm', upbeat: 'Upbeat', tense: 'Tense', playful: 'Playful', celebrate: 'Celebrate' };
 
   const MOODS = {
     calm: { bpm: 78, lead: 'triangle', lv: 0.22, bv: 0.3, root: 60, mel: [0, 4, 7, 12, 7, 4, 9, 12, 7, 11, 14, 11, 9, 7, 4, 2], bass: [-12, -5, -3, -8], pulse: false },
     upbeat: { bpm: 150, lead: 'square', lv: 0.09, bv: 0.22, root: 60, mel: [0, 4, 7, 4, 9, 7, 4, 7, 5, 9, 12, 9, 7, 4, 2, 4], bass: [-12, -12, -7, -5], pulse: false },
     tense: { bpm: 118, lead: 'sawtooth', lv: 0.07, bv: 0.2, root: 57, mel: [0, null, 3, null, 0, null, 6, null, 5, null, 3, null, 0, -1, 0, null], bass: [-24, -24, -22, -24], pulse: true },
-    playful: { bpm: 132, lead: 'square', lv: 0.08, bv: 0.22, root: 62, mel: [0, 2, 4, 7, 4, 2, 0, null, 5, 7, 9, 12, 9, 7, 5, null], bass: [-12, -7, -5, -7], pulse: false }
+    playful: { bpm: 132, lead: 'square', lv: 0.08, bv: 0.22, root: 62, mel: [0, 2, 4, 7, 4, 2, 0, null, 5, 7, 9, 12, 9, 7, 5, null], bass: [-12, -7, -5, -7], pulse: false },
+    // finale fanfare (C major): C-E-G-C, E-G-C, A-C-E-A, C-F-A-C with the lead climbing to a high tonic on the last step;
+    // bass C-G-A-F (I-V-vi-IV), pulsed on every step so it bounces
+    celebrate: { bpm: 145, lead: 'square', lv: 0.09, bv: 0.22, root: 60, mel: [0, 4, 7, 12, 16, 19, 24, null, 9, 12, 16, 21, 12, 17, 21, 24], bass: [-12, -5, -3, -7], pulse: true }
   };
 
   const VOICE_LABELS = { penguin: 'Penguin', frog: 'Frog', dog: 'Dog', whisker: 'Cat', rabbit: 'Rabbit', bear: 'Bear' };

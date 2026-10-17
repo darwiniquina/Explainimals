@@ -61,6 +61,8 @@ To invoke it explicitly, type `/explainimals:explainimals make an explainer abou
 folder you are working in. Open it and press **Play**. Keys: **Space** play/pause, **R** replay, **M** sound,
 **F** fullscreen, **Left / Right** previous or next slide.
 
+The last slide plays a short celebration jingle by default; ask for a different ending sound or none (for example "end quietly" or "no celebration sound") and your AI sets `finale`.
+
 Before it builds, your AI shows a short plan (the takeaway, the cast and the slide beats) and asks if you want to change anything. When it finishes, it summarises what the explainer says and asks what to change. Reply with revisions ("make it shorter", "swap the cat for the frog", "slide 4 is too crowded") and it edits the same file and rebuilds it, until you say it is done. Say "just build it" to skip the plan question.
 
 | Animal | Default role |
@@ -202,7 +204,7 @@ Presentations have optional music and sound effects (`presentation/audio.js`, co
 Everything is generated in the browser with the Web Audio API, so there are no audio files, downloads or licences
 to track.
 
-- Music moods: `calm`, `upbeat`, `tense`, `playful`. Sound effects (ten): `blip`, `pop`, `jump`, `coin`,
+- Music moods: `calm`, `upbeat`, `tense`, `playful`, and `celebrate` (the fanfare, last slide only). Sound effects (ten): `blip`, `pop`, `jump`, `coin`,
   `confirm`, `error`, `whoosh`, `typing`, `talk`, `appear`.
 - Presentations view: a **Sound** button (toggles mute, shows On or Off), a volume slider, a "now playing" label,
   and the `M` key toggles mute. Sound is silent until you press Play.

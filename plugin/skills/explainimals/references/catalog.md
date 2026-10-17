@@ -241,6 +241,7 @@ Also `prop:<id>` (a prop on the slide) and `[x, y]` (stage pixels).
 | upbeat | Upbeat | 150 |
 | tense | Tense | 118 |
 | playful | Playful | 132 |
+| celebrate | Celebrate | 145 |
 
 A slide's `music` may also be `"none"`, which stops the loop from that slide on.
 

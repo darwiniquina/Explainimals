@@ -26,6 +26,7 @@
   const CAM_FOCUS = ['stage', 'speaker', 'listener', 'left', 'center', 'right', 'face', 'panel'];   // also 'prop:<id>' and [x, y]
   const CAM_MOVES = ['none', 'punch-in', 'push-in', 'pull-out', 'reveal', 'pan', 'drift'];
   const ZOOMS = [1, 2, 3];                                      // whole-number magnification only: pixels stay square
+  const FINALES = ['celebrate', 'keep', 'none'];                 // top-level finale values; a mood id is also allowed
   const DARK = '#0b0912';                                       // letterbox bars, iris and fade-black cover
   const TR_LEN = { iris: 0.7, flash: 0.5 };                     // transition length in seconds (default 0.6)
   const RIGHT = { x0: 76, x1: 236 };                            // the area right of a left-standing character
@@ -179,6 +180,13 @@
     const au = !!Pres.audio;                                          // audio checks only when audio.js is loaded
     const sfxIds = au ? cat.sfx.map((x) => x.id) : [], musicIds = au ? cat.music.map((x) => x.id) : [];
     if (au && sc.music !== undefined) check('music', sc.music, musicIds, 'music track');
+    // celebrate is the finale fanfare: it only ever plays on the last slide (a 1-slide scenario's only slide is the last)
+    if (sc.music === 'celebrate' && slides.length >= 2) bad('music', '"celebrate" only plays on the last slide; put it on the last slide, or leave music out so "finale" plays it');
+    if (sc.finale !== undefined) {
+      if (au) check('finale', sc.finale, FINALES.concat(musicIds.filter((id) => !FINALES.includes(id))), 'finale');
+      const lastSlide = slides[slides.length - 1];
+      if (lastSlide && lastSlide.music !== undefined) warnings.push('finale: ignored, the last slide sets its own music');
+    }
     ['typewriter', 'voice'].forEach((k) => { if (sc[k] !== undefined && typeof sc[k] !== 'boolean') bad(k, 'must be true or false'); });
 
     slides.forEach((s, i) => {
@@ -263,6 +271,7 @@
       if (s.panel && s.title) warnings.push(`${p}: a title card and a panel on the same slide will overlap`);
       if (s.title && s.title.w !== undefined && !(s.title.w >= 60 && s.title.w <= 230)) bad(p + '.title.w', 'must be between 60 and 230');
       if (au && s.music !== undefined && s.music !== 'none') check(p + '.music', s.music, musicIds, 'music track');
+      if (s.music === 'celebrate' && i !== slides.length - 1) bad(p + '.music', '"celebrate" only plays on the last slide; use another mood here');
       if (au && s.sfx !== undefined) {
         const list = [].concat(s.sfx);
         if (list.length > 6) warnings.push(`${p}.sfx: more than 6 sound effects on one slide`);
@@ -282,6 +291,15 @@
   };
 
   // -------------------------------------------------------------- normalisation
+  // The music of the last slide of a 2+ slide scenario that has none of its own. keep = the loop already playing
+  // carries on; none = silence; a mood id plays that mood; omitted or celebrate = the fanfare (see Pres.validate).
+  function finaleMusic(finale, carried) {
+    if (finale === undefined || finale === 'celebrate') return 'celebrate';
+    if (finale === 'keep') return carried;
+    if (finale === 'none') return null;
+    return finale;
+  }
+
   function normalize(scenario) {
     const sc = Pres.expandDialogue(scenario);                         // dialogue blocks become slides first
     const d = Object.assign({ background: Object.keys(Pres.backgrounds)[0], skin: DEFAULT_SKIN, fps: 12 }, sc.defaults);
@@ -325,6 +343,8 @@
       t += duration;
       return slide;
     });
+    const last = slides.length - 1;                                   // finale: applies to the last slide only, and only without its own music
+    if (last >= 1 && sc.slides[last].music === undefined) slides[last].music = finaleMusic(sc.finale, slides[last].music);
     return { title: sc.title || '', fps: d.fps || 12, slides, total: t, typewriter: sc.typewriter !== false, voice: sc.voice !== false };
   }
 
@@ -962,6 +982,7 @@
     }
   }
 
+  Pres.normalizeScenario = normalize;                              // pure (no DOM, no validation): the slides a Player plays
   Pres.Player = Player;
   Pres.scenarios = Pres.scenarios || {};
 })(window);
