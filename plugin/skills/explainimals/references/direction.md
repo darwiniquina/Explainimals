@@ -99,9 +99,13 @@ first and a one-character recap last. Use `walkTo` or `enter` for a character th
 
 ### Props for ideas the catalog lacks
 
-The catalog is small (no moon, bed, clock, battery, food). Reuse the nearest prop and give it a `label` that
-names the idea: `{ "id": "star", "label": "Moon" }`, `{ "id": "lightbulb", "label": "Energy" }`,
-`{ "id": "gear", "label": "Body clock" }`. Reason: the label carries the meaning when the art cannot.
+Check `catalog.md` first: it has everyday objects (coin, building, document, bin, calendar, clock, book, key,
+trophy, phone, sun, moon, tree, water drop, flame, brain, battery, up and down arrows, cycle arrows) as well as
+the tech ones. When an idea still has no matching prop, prefer leaving the prop out and let the line and an
+`emote` carry it. Reuse the nearest prop with a `label` only when its shape still fits the idea, for example a
+`folder` labelled "Files" or a `gear` labelled "Process". Do not stretch it: a star labelled "Moon" or a gear
+labelled "Pressure" shows the wrong picture and the label cannot fix it. Note each missing idea so the catalog can
+grow.
 
 ## 3. Camera vocabulary
 
