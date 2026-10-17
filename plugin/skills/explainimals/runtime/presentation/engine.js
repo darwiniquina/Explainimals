@@ -60,6 +60,16 @@
   // -------------------------------------------------------------- validation
   const one = (list) => list.join(', ');
 
+  // the glyph warning text: names up to three characters that the pixel font cannot draw (see Pres.font.unsupported)
+  function describeGlyphs(list) {
+    const hex = (ch) => 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    const named = list.slice(0, 3).map((ch) => `"${ch}" (${hex(ch)})`).join(', ');
+    const more = list.length > 3 ? ` and ${list.length - 3} more` : '';
+    const single = list.length === 1;
+    return `${single ? 'character' : 'characters'} ${named}${more} ${single ? 'is' : 'are'} not in the pixel font and ` +
+      `${single ? 'will draw as a box' : 'will draw as boxes'}; use plain ASCII`;
+  }
+
   // -------------------------------------------------------------- dialogue blocks (AUDIO.md: Dialogue blocks)
   // A slide with a `dialogue` key is a block. Before validation and playback it becomes one ordinary slide
   // per line; `_from` on each new slide names the source line for messages.
@@ -151,6 +161,12 @@
     const bgIds = cat.backgrounds.map((b) => b.id), propIds = cat.props.map((p) => p.id);
     const bad = (path, msg) => errors.push(`${path}: ${msg}`);
     const check = (path, val, list, what) => { if (!list.includes(val)) bad(path, `unknown ${what} "${val}". Valid: ${one(list)}`); };
+    // text the engine draws in the pixel font: a character with no glyph draws as a box, so it only warns
+    const glyphs = (path, text) => {
+      if (!Pres.font || typeof Pres.font.unsupported !== 'function' || text == null) return;
+      const list = Pres.font.unsupported(String(text));
+      if (list.length) warnings.push(`${path}: ${describeGlyphs(list)}`);
+    };
 
     if (!sc || typeof sc !== 'object') return { errors: ['scenario must be an object'], warnings };
     if (!Array.isArray(sc.slides) || !sc.slides.length) return { errors: ['slides must be a non-empty array'], warnings };
@@ -201,6 +217,7 @@
         const slot = c.at || 'left';
         if (used.has(slot)) bad(q + '.at', `two characters at "${slot}"`);
         used.add(slot);
+        glyphs(q + '.say', c.say);
         if (c.say && c.say.length > 160) warnings.push(`${q}.say: ${c.say.length} characters is long; aim for under 110`);
       });
       if (s.camera !== undefined) {
@@ -229,6 +246,7 @@
         const id = typeof pr === 'string' ? pr : pr && pr.id;
         check(q + (typeof pr === 'string' ? '' : '.id'), id, propIds, 'prop');
         if (pr && typeof pr === 'object') {
+          glyphs(q + '.label', pr.label);
           if (pr.enter) check(q + '.enter', pr.enter, ENTERS, 'enter animation');
           if (pr.at && !(Array.isArray(pr.at) && pr.at.length === 2)) bad(q + '.at', 'must be [x, y] in stage pixels');
           if (pr.flip !== undefined && typeof pr.flip !== 'boolean') bad(q + '.flip', 'must be true or false');
@@ -238,8 +256,10 @@
       if (s.panel) {
         if (!Array.isArray(s.panel.bullets) || !s.panel.bullets.length) bad(p + '.panel.bullets', 'needs a non-empty array of short strings');
         else if (s.panel.bullets.length > 4) warnings.push(`${p}.panel.bullets: more than 4 bullets may overflow`);
-        (s.panel.bullets || []).forEach((b, j) => { if (String(b).length > 22) warnings.push(`${p}.panel.bullets[${j}]: ${String(b).length} characters will wrap; aim for 22 or fewer`); });
+        (s.panel.bullets || []).forEach((b, j) => { glyphs(`${p}.panel.bullets[${j}]`, b); if (String(b).length > 22) warnings.push(`${p}.panel.bullets[${j}]: ${String(b).length} characters will wrap; aim for 22 or fewer`); });
       }
+      if (s.title && typeof s.title === 'object') { glyphs(p + '.title.text', s.title.text); glyphs(p + '.title.subtitle', s.title.subtitle); }
+      if (s.panel) glyphs(p + '.panel.title', s.panel.title);
       if (s.panel && s.title) warnings.push(`${p}: a title card and a panel on the same slide will overlap`);
       if (s.title && s.title.w !== undefined && !(s.title.w >= 60 && s.title.w <= 230)) bad(p + '.title.w', 'must be between 60 and 230');
       if (au && s.music !== undefined && s.music !== 'none') check(p + '.music', s.music, musicIds, 'music track');

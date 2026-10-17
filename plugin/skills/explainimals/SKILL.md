@@ -24,14 +24,15 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
    The JSON must be strict: the `//` comments in the reference examples are not allowed.
 4. **Validate:** `node <skill>/scripts/validate.js explainimals-output/<topic-slug>.json`. Fix every `ERROR`,
    read every `WARN` (each says what to change), and repeat until there are no errors and the warnings are
-   either gone or deliberate.
+   either gone or deliberate. A WARN about a character the pixel font cannot draw must be fixed, not ignored
+   (hard rule 9).
 5. **Build:** `node <skill>/scripts/build.js explainimals-output/<topic-slug>.json -o explainimals-output/<topic-slug>.html`.
    Give the user the full path of the `.html`, and tell them to open it in a browser and press **Play**.
    Sound stays off until Play is pressed.
 6. **Offer tweaks**: shorter or longer, another cast, another music mood, no camera moves. Rebuild only when the
    user asks.
 
-## The 8 hard rules
+## The 9 hard rules
 
 1. One speaker with `say` per slide. For a conversation, use a `dialogue` block (one slide per line).
 2. At most 2 characters on screen at once. A story with 3 or 4 characters is a chain of dialogue blocks with
@@ -46,6 +47,10 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
 7. At most one camera move per slide. Never two zoomed slides in a row, except lines of one dialogue block.
 8. Panel: at most 4 bullets, each 22 characters or fewer. A `dialogue` slide has no `characters`, `character`
    or `say`, and every line expands to its own slide (a 4-line block is 4 slides).
+9. All on-screen text (`say`, titles, panel bullets, prop labels) is plain ASCII: straight quotes, a plain
+   hyphen, three dots, no emoji, no accented letters (write "cafe", "naive"). Spell out symbols: "TM", "EUR",
+   "(c)". Fix every WARN from `validate.js` about a character the pixel font cannot draw before you run
+   `build.js`. See `references/direction.md`, "Text the font can draw".
 
 ## References: when to read each file
 

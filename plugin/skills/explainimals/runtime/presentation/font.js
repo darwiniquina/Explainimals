@@ -4,6 +4,14 @@
  * A hand-drawn 5x7 pixel font with rounded letters, covering printable ASCII 32..126.
  * Glyphs are text pictures: one string per row, '#' = ink, '.' = empty. Edit them directly.
  *
+ * Normalisation: text is normalised before it is measured, wrapped or drawn, so all three agree.
+ * normalize() maps typographic characters to the ASCII the font has: curly quotes to ' and ",
+ * dashes (en, em, hyphen, minus) to -, ellipsis to ..., no-break and other Unicode spaces to a space,
+ * bullet to *, middle dot to ., multiplication sign to x, arrows to -> and <-. Zero-width characters
+ * (U+200B, U+200C, U+200D, U+FEFF, and the emoji selector U+FE0F) are removed. Anything else outside ASCII has no glyph and is drawn as
+ * a box. unsupported(text) lists those characters after normalisation, one entry per code point (so an
+ * emoji is one entry), for the validator to warn about. Tabs and '\n' are kept as they are.
+ *
  * Metrics (all in font pixels, before the integer `scale` is applied):
  *   cap height   7 rows   (row 0 = cap line, row 6 = baseline)
  *   x-height     5 rows   (rows 2..6; lowercase letters start at row 2)
@@ -17,6 +25,8 @@
  *   Pres.font.measure(text, {scale})                -> {w, h}
  *   Pres.font.draw(buf, text, x, y, color, {scale, shadow})
  *   Pres.font.wrap(text, maxWidth, {scale})         -> string[]
+ *   Pres.font.normalize(text)                       -> string   (the mapping described above)
+ *   Pres.font.unsupported(text)                     -> string[] (distinct characters that still draw as a box)
  * Unknown characters are drawn as a small box. Tabs count as spaces. '\n' starts a new line.
  */
 (function (global) {
@@ -156,6 +166,38 @@
   const scaleOf = (o) => (o && o.scale >= 1 ? Math.floor(o.scale) : 1);
   const toText = (t) => (t == null ? '' : String(t));
 
+  // Typographic characters and the ASCII each is drawn as (\u escapes keep this file ASCII).
+  const SUBST = new Map();
+  const substitute = (chars, to) => { for (const c of chars) SUBST.set(c, to); };
+  substitute('\u2018\u2019\u201A\u201B\u2032', "'");            // curly single quotes, prime
+  substitute('\u201C\u201D\u201E\u201F\u2033', '"');            // curly double quotes, double prime
+  substitute('\u2010\u2011\u2012\u2013\u2014\u2212', '-');      // hyphens, en and em dashes, minus sign
+  substitute('\u2026', '...');                                  // ellipsis
+  substitute('\u2022', '*');                                    // bullet
+  substitute('\u00B7', '.');                                    // middle dot
+  substitute('\u00D7', 'x');                                    // multiplication sign
+  substitute('\u2192', '->');                                   // rightwards arrow
+  substitute('\u2190', '<-');                                   // leftwards arrow
+  substitute('\u00A0\u202F\u3000', ' ');                        // no-break and ideographic spaces
+  for (let c = 0x2002; c <= 0x200A; c++) SUBST.set(String.fromCharCode(c), ' ');   // en space .. hair space
+  const ZERO_WIDTH = new Set(['\u200B', '\u200C', '\u200D', '\uFEFF', '\uFE0F']);
+  const NEEDS_NORMAL = /[^\x00-\x7E]/;                          // plain ASCII and control characters pass through
+
+  function normalizeText(text) {
+    const s = toText(text);
+    if (!NEEDS_NORMAL.test(s)) return s;
+    let out = '';
+    for (const ch of s) {                                       // for..of walks code points: an emoji is one ch
+      if (ZERO_WIDTH.has(ch)) continue;
+      const to = SUBST.get(ch);
+      out += to === undefined ? ch : to;
+    }
+    return out;
+  }
+
+  // a character the font can draw: printable ASCII, plus the tab and newline that layout handles itself
+  const hasGlyph = (ch) => ch === '\n' || ch === '\t' || Object.prototype.hasOwnProperty.call(G, ch);
+
   // width of one line in pixels (already multiplied by the scale)
   function lineWidth(line, s) {
     let w = 0;
@@ -180,9 +222,20 @@
     leading: LEADING,
     lineHeight: LINE_H,
 
+    normalize(text) {
+      return normalizeText(text);
+    },
+
+    // distinct characters, after normalisation, that have no glyph and so draw as a box
+    unsupported(text) {
+      const out = [];
+      for (const ch of normalizeText(text)) if (!hasGlyph(ch) && !out.includes(ch)) out.push(ch);
+      return out;
+    },
+
     measure(text, opts) {
       const s = scaleOf(opts);
-      const lines = toText(text).split('\n');
+      const lines = normalizeText(text).split('\n');
       let w = 0;
       for (const l of lines) w = Math.max(w, lineWidth(l, s));
       return { w, h: ((lines.length - 1) * LINE_H + GLYPH_H) * s };
@@ -190,7 +243,7 @@
 
     draw(buf, text, x, y, color, opts) {
       const s = scaleOf(opts);
-      const lines = toText(text).split('\n');
+      const lines = normalizeText(text).split('\n');
       const c = color || DEFAULT_COLOR;
       const sh = opts && opts.shadow;
       if (sh) lines.forEach((l, i) => paint(buf, l, x + s, y + s + i * LINE_H * s, sh, s));
@@ -203,7 +256,7 @@
     wrap(text, maxWidth, opts) {
       const s = scaleOf(opts);
       const out = [];
-      for (const para of toText(text).split('\n')) {
+      for (const para of normalizeText(text).split('\n')) {
         const words = para.split(/\s+/).filter(Boolean);
         if (!words.length) { out.push(''); continue; }
         let line = '';

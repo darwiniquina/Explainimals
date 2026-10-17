@@ -119,6 +119,11 @@ Pres.ui.label(text)                          // tiny tag under a prop, e.g. "Ser
 
 `Pres.ui.bubble` also takes an optional `reveal` (how many characters to draw) and returns `lines` and `total`, which the typewriter effect uses. See `presentation/AUDIO.md` (Speech) for the details.
 
+Text: `Pres.font` draws printable ASCII only (codes 32..126). The engine normalises common typographic punctuation
+(curly quotes, dashes, ellipsis, Unicode spaces, bullets and similar) and removes zero-width characters. Any other
+character has no glyph and draws as a box, and `validate.js` warns about it. Authoring rule: `references/direction.md`,
+"Text the font can draw".
+
 ## Sound (presentation/audio.js)
 
 Music and sound effects are generated in the browser with the Web Audio API, so they add no files. The
