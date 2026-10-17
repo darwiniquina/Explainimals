@@ -190,6 +190,8 @@ presentation/scenarios/       web-trip (penguin), sky-blue (cat + frog), how-cla
                              code-review-chat (all six characters, dialogue blocks: 'The code review')
 ```
 
+`samples/` holds a demo made with the skill (`sleep-recharges-brain`: the home, office, lab and city backgrounds, eleven of the newer props and a music arc); it is not shipped with the skill, and the dashboard lists it in Presentations.
+
 `presentation/archive/` keeps earlier soft/pastel backgrounds, props and UI (`*.soft.js`); nothing loads them.
 Art direction: retro 8/16-bit console look (limited saturated palette, dark outline, 2-3 tone shading, dithered
 skies, square-cornered windows), no pastel pink/lavender, no kawaii details.
