@@ -1,0 +1,20 @@
+{
+  "title": "Crowd test",
+  "defaults": { "background": "classroom", "skin": "penguin" },
+  "slides": [
+    { "id": "a-two-chars-4-props-long-line", "duration": 8,
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "happy", "pose": "point_right", "say": "A request leaves your laptop, crosses the internet, and a server somewhere sends the page back." },
+        { "skin": "rabbit", "at": "right", "expression": "curious" } ],
+      "props": [ { "id": "laptop", "label": "Your laptop" }, { "id": "cloud", "label": "The internet" }, { "id": "server", "label": "Server rack" }, { "id": "database", "label": "Database" } ] },
+    { "id": "b-panel-plus-props", "duration": 8,
+      "characters": [ { "skin": "bear", "at": "left", "expression": "determined", "pose": "present", "say": "Three steps matter most, remember them." } ],
+      "panel": { "title": "Steps", "bullets": ["Ask the server", "Wait for reply", "Show the page", "Cache the result"] },
+      "props": [ { "id": "laptop", "label": "Laptop" }, { "id": "arrow" }, { "id": "server", "label": "Server" } ] },
+    { "id": "c-dialogue-6-props", "duration": 8,
+      "characters": [
+        { "skin": "dog", "at": "left", "expression": "curious", "pose": "think", "say": "But where does the data actually live when I close my laptop?" },
+        { "skin": "whisker", "at": "right", "expression": "thinking" } ],
+      "props": [ { "id": "folder", "label": "Files" }, { "id": "database", "label": "Database" }, { "id": "lock", "label": "Security" }, { "id": "cloud", "label": "Cloud" }, { "id": "gear", "label": "Settings" }, { "id": "chart", "label": "Reports" } ] }
+  ]
+}

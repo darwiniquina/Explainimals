@@ -1,0 +1,12 @@
+{
+  "title": "Broken fixture",
+  "slides": [
+    {
+      "id": "unknown-skin-and-background",
+      "background": "no-such-background",
+      "characters": [
+        { "skin": "no-such-skin", "at": "left", "say": "This scenario names things the engine does not have." }
+      ]
+    }
+  ]
+}
