@@ -61,7 +61,7 @@ To invoke it explicitly, type `/explainimals:explainimals make an explainer abou
 folder you are working in. Open it and press **Play**. Keys: **Space** play/pause, **R** replay, **M** sound,
 **F** fullscreen, **Left / Right** previous or next slide.
 
-When it finishes, your AI asks what to change. Reply with revisions ("make it shorter", "swap the cat for the frog", "slide 4 is too crowded") and it edits the same file and rebuilds it, until you say it is done.
+Before it builds, your AI shows a short plan (the takeaway, the cast and the slide beats) and asks if you want to change anything. When it finishes, it summarises what the explainer says and asks what to change. Reply with revisions ("make it shorter", "swap the cat for the frog", "slide 4 is too crowded") and it edits the same file and rebuilds it, until you say it is done. Say "just build it" to skip the plan question.
 
 | Animal | Default role |
 |---|---|
