@@ -1,13 +1,56 @@
-# Explainimals
+<p align="center">
+  <img src="docs/banner.png" alt="Explainimals: six pixel-art animals ready to explain any topic" width="100%">
+  <br>
+  <b>Turn any topic into an animated pixel-art explainer in one file.</b>
+</p>
 
-Describe a topic and your AI makes a short animated explainer: pixel-art animals (penguin, frog, dog, cat, rabbit and
-bear) talk in speech bubbles while props, camera moves, music and sound effects play. The result is one
-self-contained `.html` file. Open it in any browser and press **Play**; sound stays off until you press Play.
+<p align="center">Six pixel-art animals talk through the idea while the camera moves and the music plays.</p>
 
-Explainimals ships as an AI skill for Claude (Claude Code, Claude.ai and the Claude desktop app) and for Codex. This
-repo holds both the skill (`plugin/`) and the studio used to build and tune it (everything else). Pixel art is the one
-visual style: every character, background, prop and UI piece is drawn from whole pixels (no smooth vector art, no
-render filters). Plain HTML/JS, no build step, no runtime dependencies.
+Explainimals is a skill that turns a topic into a short animated explainer. Your AI agent writes the whole thing as a small JSON scenario, and a built-in engine plays it back as pixel-art animation with talking animals, camera moves, music and sound. The output is one HTML file, so there is no filming, editing or rendering step to wait for.
+
+## Why it is fast
+
+- **The AI writes a plan, not frames.** It writes a small JSON scenario (slides, who says what, props, camera, music) instead of drawing video frames.
+- **The engine does the animation.** The file already holds the characters, backgrounds, props, camera moves, pixel art, music and sound.
+- **Nothing to edit, record or render.** There is no video editor, no recording and no render queue, so there is no waiting on output.
+- **One file that plays at once.** The result is one self-contained HTML file that opens in any browser and works offline.
+- **Problems are caught before the build.** A validator tells the AI exactly what to fix, so fixes happen before the file is made.
+
+## How it works
+
+1. **Describe a topic.** Ask in plain words, for example "make an Explainimals about how DNS works".
+2. **The AI writes a JSON scenario and checks it.** The validator lists every error and warning, and the AI fixes them before it builds the file.
+3. **Open the HTML file and press Play.** Sound stays off until you press Play.
+
+A scenario is plain JSON. This is one slide, with a penguin, a background, a prop and a camera move:
+
+```json
+{
+  "background": "night-sky",
+  "camera": { "focus": "speaker", "zoom": 2, "move": "push-in" },
+  "props": [ { "id": "server", "label": "Server" } ],
+  "characters": [
+    { "skin": "penguin", "at": "left", "expression": "happy", "pose": "point_right",
+      "say": "This server stores the page's files." }
+  ]
+}
+```
+
+Any AI that can write JSON and run Node (Claude, Codex or others) can drive it, because the format is plain and the validator explains every error.
+
+## What you get
+
+- **6 animals** (penguin, frog, dog, cat, rabbit and bear), **42 props** and **11 backgrounds**.
+- **Camera moves** (punch-in, push-in, pull-out, reveal, pan and drift) and eight slide transitions.
+- **Music that follows the story**, with a celebration fanfare on the last slide by default.
+- **A thumbnail strip** to jump between slides, plus keys for play, replay, sound, fullscreen and previous or next slide.
+- **Length:** a typical explainer runs 45 to 60 seconds of animation. Ask for longer and you get more.
+- **One self-contained `.html` file**, with sound off until you press Play.
+- **A skill for Claude Code, Claude.ai and the Claude desktop app, and for Codex.**
+
+Pixel art is the one visual style: every character, background, prop and UI piece is drawn from whole pixels. It is plain HTML/JS with no build step and no runtime dependencies.
+
+This repo holds both the skill (`plugin/`) and the studio used to build and tune it (everything else).
 
 ## Install
 
