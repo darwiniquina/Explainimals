@@ -14,6 +14,7 @@ Registry          presentation/registry.js  Pres.registerBackground / registerPr
 Font + UI         presentation/font.js, presentation/ui.js
 Backgrounds       presentation/backgrounds.js
 Props             presentation/props.js
+Emotes            presentation/emotes.js    Pres.registerEmote / Pres.emoteCatalog, see Emotes below
 Engine + player   presentation/engine.js, presentation/player.html
 Audio             presentation/audio.js     Pres.audio, see AUDIO.md
 ```
@@ -36,6 +37,9 @@ the global `Pres` object inside an IIFE. Colours are plain hex strings.
 - 1px outline in a dark, saturated tone of the object's own colour (not pure black). 2-tone shading,
   light from the top-left, at most one small highlight pixel cluster per shape.
 - No anti-aliasing, no rotation, no scaling: whole pixels only. No stray single pixels.
+- Integer zoom is the one exception to the no-scaling rule. The camera (SCENARIO.md, Camera) may magnify the stage
+  view by a whole number only (2 or 3, never fractional), and its pans move in whole stage pixels. The art is already
+  pixel-perfect, so the view is a window onto it, never a resampled image.
 - Palette discipline: each asset uses at most about 8 colours.
 - Characters' main body colours for reference: penguin charcoal #4a4a4a (orange beak), frog soft green
   #7db35f (peach belly), dog fawn #e2b27c (brown ears), whisker (the cat) grey tabby #9094a5, rabbit white with a soft
@@ -73,6 +77,26 @@ Pres.registerProp('laptop', {
 ```
 
 Props are 16..40 px wide/tall icons that sit on the stage next to a character: they explain a concept.
+
+## Emotes (presentation/emotes.js)
+
+Small icons drawn above a character's head (the `emote` field in SCENARIO.md, Character motion). Each emote is
+registered like a prop:
+
+```js
+Pres.registerEmote('bulb', {
+  label: 'Idea',
+  w: 8, h: 10,              // bounding box, at most 12 x 12
+  draw(buf, t) { /* t = seconds; a 2-frame animation is allowed */ },
+});
+Pres.emotes                 // id -> definition
+Pres.emoteCatalog()         // -> [{ id, label, w, h }]
+```
+
+- The ids are `exclamation question heart dots sweat zzz sparkle bulb`.
+- Draw with the `Pres.Buf` API, origin 0,0, as props do.
+- Style: retro 8/16-bit, 1px dark outline, 2 or 3 tones, at most about 5 colours. Use a white or light outline
+  halo where needed, so the emote reads on both light and dark backgrounds.
 
 ## Font + UI (presentation/font.js, presentation/ui.js)
 

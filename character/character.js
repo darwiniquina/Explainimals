@@ -3,6 +3,7 @@
  *
  *   const c = new Character(containerEl, { skin: 'penguin' | 'frog' | 'dog' | 'whisker' | 'rabbit' | 'bear', viewBox: '...' });
  *   c.apply({ expression: 'happy', pose: 'wave', talking: true });
+ *   c.action('nod');   // a timed gesture on top of the pose, see Character.actions
  *   // each frame:
  *   c.tick(dtSeconds);
  *
@@ -26,6 +27,29 @@
   const CHANNELS = ['lS', 'lE', 'rS', 'rE', 'tilt', 'lean', 'lift', 'lookX', 'lookY', 'waveL', 'waveR', 'bounce'];
 
   const f2 = (n) => n.toFixed(2);
+
+  // Timed gestures started with char.action(name), and how many seconds each one lasts.
+  const ACTIONS = { nod: 0.6, shake: 0.7, hop: 0.6, recoil: 0.5, shiver: 0.8 };
+
+  // Whole-pixel offsets of one action at progress p (0 to 1) over dur seconds. body and head are [x, y] grid pixels,
+  // added on top of the skin's own motion. A pure function of p, so the same time always gives the same frame.
+  function actionOffset(name, p, dur) {
+    const none = [0, 0];
+    switch (name) {
+      case 'nod': // head dips 2 px, twice
+        return { body: none, head: [0, Math.round(2 * Math.abs(Math.sin(p * 2 * Math.PI)))] };
+      case 'shake': // head swings 2 px left and right, twice
+        return { body: none, head: [Math.round(2 * Math.sin(p * 4 * Math.PI)), 0] };
+      case 'hop': // one jump, 6 px up and back down
+        return { body: [0, -Math.round(6 * Math.sin(p * Math.PI))], head: none };
+      case 'recoil': // quick lean back 5 px, then settle to rest
+        return { body: [Math.round(-5 * (p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8)), 0], head: none };
+      case 'shiver': // body jitters 1 px left and right, 25 steps a second
+        return { body: [Math.floor(p * dur * 25) % 2 ? 1 : -1, 0], head: none };
+      default:
+        return { body: none, head: none };
+    }
+  }
 
   // Default body/head motion, used when a skin does not supply its own motion(): the whole body bobs, the head tilts on its neck.
   function defaultMotion(skin, { c, t, talkT, state }) {
@@ -52,6 +76,7 @@
       this.speed = opts.speed || 9; // how fast poses glide (higher = snappier)
       this.t = 0;
       this.talkT = 0;
+      this.act = null; // the timed action in progress: { name, t, dur }
 
       this.state = {
         expression: 'neutral',
@@ -99,6 +124,7 @@
     static get skins() { return Object.keys(global.CharacterSkins || {}); }
     static get expressions() { return Object.keys(P.EXPRESSIONS); }
     static get poses() { return Object.keys(P.POSES); }
+    static get actions() { return Object.keys(ACTIONS); }
 
     // names of the swappable face parts a given skin provides
     static partNames(skinId) {
@@ -132,6 +158,19 @@
       return this;
     }
 
+    // Start a timed action (nod shake hop recoil shiver). It only advances through tick(dt).
+    // Starting one while another runs replaces it. action(null) cancels the one in progress.
+    action(name) {
+      if (name === null) { this.act = null; return this; }
+      if (!Object.prototype.hasOwnProperty.call(ACTIONS, name)) {
+        throw new Error(`Unknown action "${name}". Valid: ${Character.actions.join(', ')}`);
+      }
+      this.act = { name, t: 0, dur: ACTIONS[name] };
+      return this;
+    }
+
+    get actionActive() { return !!this.act; }
+
     setTalking(on) { this.state.talking = !!on; return this; }
     setBlink(on) { this.state.blink = !!on; return this; }
     setIdle(on) { this.state.idle = !!on; return this; }
@@ -154,7 +193,7 @@
 
     /*
      * Apply one scene-style spec. Any field may be omitted.
-     *   { expression, pose, talking, look: {x,y} | null, eyes, brows, mouth }
+     *   { expression, pose, talking, look: {x,y} | null, eyes, brows, mouth, action: name | { id } }
      */
     apply(spec, { snap = false } = {}) {
       if (spec.expression !== undefined) this.setExpression(spec.expression);
@@ -162,6 +201,10 @@
       if (spec.talking !== undefined) this.setTalking(spec.talking);
       if ('look' in spec) spec.look ? this.setLook(spec.look.x, spec.look.y) : this.setLook(null);
       ['eyes', 'brows', 'mouth'].forEach((p) => p in spec && this.override(p, spec[p]));
+      if (spec.action !== undefined) {
+        const a = spec.action;
+        this.action(a && typeof a === 'object' ? a.id : a);
+      }
       if (snap) this.snap();
       return this;
     }
@@ -181,6 +224,7 @@
       const spec = { expression: s.expression, pose: s.pose, talking: s.talking };
       if (s.manualLook) spec.look = s.manualLook;
       for (const p of ['eyes', 'brows', 'mouth']) if (s.override[p]) spec[p] = s.override[p];
+      if (this.act) spec.action = this.act.name;
       return spec;
     }
 
@@ -193,6 +237,10 @@
     tick(dt) {
       this.t += dt;
       if (this.state.talking) this.talkT += dt;
+      if (this.act) {
+        this.act.t += dt;
+        if (this.act.t >= this.act.dur) this.act = null; // finished: the next frame is the plain rest pose
+      }
 
       const look = this._targetLook();
       this.target.lookX = look.x;
@@ -223,8 +271,16 @@
 
       // body + head motion (a skin may replace it, e.g. squash-and-stretch for a blob body)
       const motion = (skin.motion || ((ctx) => defaultMotion(skin, ctx)))({ c, t, talkT: this.talkT, state });
-      this._set('body', slot.body, 'transform', motion.body);
-      if (slot.head) this._set('head', slot.head, 'transform', motion.head);
+      // a timed action is appended as extra translate()s, so the skin's motion is kept as it is
+      let bodyT = motion.body;
+      let headT = motion.head;
+      if (this.act) {
+        const o = actionOffset(this.act.name, this.act.t / this.act.dur, this.act.dur);
+        bodyT += ` translate(${o.body[0]} ${o.body[1]})`;
+        headT += ` translate(${o.head[0]} ${o.head[1]})`;
+      }
+      this._set('body', slot.body, 'transform', bodyT);
+      if (slot.head) this._set('head', slot.head, 'transform', headT);
 
       // arms: each skin redraws its arm at the current angle with drawArm(side, angle, hand).
       // R is mirrored inside the skin, so the same numbers work on both sides.

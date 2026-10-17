@@ -120,10 +120,17 @@
     const nextBtn = h('button', { class: 'px-btn alt', type: 'button', onclick: () => step(1) }, 'Next >');
     const fsBtn = h('button', { class: 'px-btn alt', type: 'button', onclick: toggleFullscreen }, 'Fullscreen');
     const loopBox = h('input', { type: 'checkbox', onchange: (e) => { player.loop = e.target.checked; } });
+    const slideLoopBox = h('input', { type: 'checkbox', onchange: applyPlayback });
+    const speedSel = h('select', { class: 'px-select v-pres-select', title: 'Playback speed (multiplies the timing)', onchange: applyPlayback },
+      h('option', { value: '0.5', text: '0.5x' }), h('option', { value: '1', text: '1x' }), h('option', { value: '2', text: '2x' }));
+    speedSel.value = '1';
     const slidesEl = h('div', { class: 'v-pres-slides' });
     const transport = h('div', { class: 'px-row v-pres-transport' },
       prevBtn, playBtn, nextBtn, scrub, clockEl,
-      h('label', { class: 'v-pres-loop' }, loopBox, ' Loop'), fsBtn);
+      h('label', { class: 'v-pres-loop' }, loopBox, ' Loop'),
+      h('label', { class: 'v-pres-loop', title: 'Repeat the current slide instead of moving on' }, slideLoopBox, ' Loop slide'),
+      h('label', { class: 'v-pres-loop' }, 'Speed ', speedSel),
+      fsBtn);
 
     // sound controls (only built when Pres.audio is supported)
     const soundBtn = audio ? h('button', { class: 'px-btn', type: 'button', title: 'Mute or unmute the sound (M)', onclick: toggleMute }, 'Sound: on') : null;
@@ -254,6 +261,7 @@
       const hasSound = hasSoundFields(sc, 0);
       try {
         player.load(sc);
+        applyPlayback();   // re-apply the speed and loop-slide controls to the newly loaded scenario
       } catch (e) {
         showMsg('err', e.message);
         updateUi();
@@ -340,6 +348,12 @@
     function togglePlay() {
       if (!player.sc) return;
       if (player.playing) pausePlayback(); else startPlay();
+    }
+
+    // the speed select and the loop-slide checkbox are the source of truth; push them onto the player
+    function applyPlayback() {
+      player.speed = Number(speedSel.value) || 1;
+      player.loopSlide = slideLoopBox.checked;
     }
 
     function step(dir) {

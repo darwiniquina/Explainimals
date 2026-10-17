@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Explainimals</title>
+<style>
+  :root {
+    --bg: #0b0912;
+    --panel: #161225;
+    --line: #3a3358;
+    --text: #ece8f8;
+    --muted: #8e87ad;
+    --accent: #f5c04f;
+    --accent-ink: #1b1407;
+    --accent2: #7fd6c8;
+    --err: #ff6b7a;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    min-height: 100vh;
+    font: 14px/1.45 ui-monospace, Consolas, "Cascadia Mono", "Courier New", monospace;
+  }
+  .app { max-width: 1040px; margin: 0 auto; padding: 16px; }
+
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .title { margin: 0; font-size: 15px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+  .counter { color: var(--muted); white-space: nowrap; }
+
+  /* The stage box is the engine's parent: its width decides the integer scale, so it must fit the
+     window both ways. 240 x 135 is 16:9, so a width of (height * 16 / 9) always fits vertically. */
+  .stagewrap { display: block; }
+  .stagebox {
+    width: min(100%, max(240px, calc((100vh - 260px) * 16 / 9)));
+    margin: 0 auto;
+  }
+  .stage {
+    position: relative;
+    margin: 0 auto;
+    background: var(--bg);
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 2px var(--line), 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* fullscreen: the stage box is the viewport-sized flex child, scaled to the screen */
+  .stagewrap:fullscreen { display: flex; align-items: center; justify-content: center; background: #000; }
+  .stagewrap:-webkit-full-screen { display: flex; align-items: center; justify-content: center; background: #000; }
+  .stagewrap:fullscreen .stagebox { width: min(100%, calc(100vh * 16 / 9)); flex: none; }
+  .stagewrap:-webkit-full-screen .stagebox { width: min(100%, calc(100vh * 16 / 9)); flex: none; }
+  .stagewrap:fullscreen .stage { box-shadow: none; }
+  .stagewrap:-webkit-full-screen .stage { box-shadow: none; }
+
+  .caption { min-height: 3em; margin: 12px 0 0; font-size: 15px; line-height: 1.5; color: var(--text); }
+
+  .bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .bar input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+  .clock { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 9.5em; text-align: right; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+  button, select {
+    font: inherit;
+    color: var(--text);
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 0;
+    padding: 6px 12px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #000;
+  }
+  button:hover, select:hover { border-color: var(--accent2); }
+  button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+  button:disabled, select:disabled { opacity: 0.4; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: bold; min-width: 104px; }
+  button.primary:hover { border-color: #fff3c4; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+  .field { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .field select { color: var(--text); }
+  .hint { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+
+  .panel { margin-top: 14px; padding: 12px 14px; background: var(--panel); border: 2px solid var(--line); box-shadow: 3px 3px 0 #000; }
+  .panel h2 { margin: 0 0 8px; font-size: 14px; }
+  .panel ul { margin: 0; padding-left: 18px; }
+  .panel li { margin: 2px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .warn { border-color: #6b5520; }
+  .warn h2 { color: var(--accent); }
+  .err { border-color: var(--err); }
+  .err h2 { color: var(--err); }
+  .err .hint { margin-top: 10px; }
+</style>
+</head>
+<body>
+<main class="app">
+  <div id="player">
+    <header class="top">
+      <h1 id="title" class="title">Explainimals</h1>
+      <span id="counter" class="counter"></span>
+    </header>
+
+    <div id="stagewrap" class="stagewrap">
+      <div id="stagebox" class="stagebox">
+        <div id="stage" class="stage" aria-label="Presentation stage"></div>
+      </div>
+    </div>
+
+    <p id="caption" class="caption" aria-live="polite"></p>
+
+    <div class="bar">
+      <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Progress">
+      <span id="clock" class="clock">0.0 / 0.0 s</span>
+    </div>
+
+    <div class="controls">
+      <button id="play" class="primary" type="button" title="Play or pause (Space)">Play</button>
+      <button id="replay" type="button" title="Start again from the first slide (R)">Replay</button>
+      <label class="field">Speed
+        <select id="speed" title="Playback speed">
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1x</option>
+          <option value="2">2x</option>
+        </select>
+      </label>
+      <button id="sound" type="button" title="Mute or unmute the sound (M)">Sound: on</button>
+      <button id="fs" type="button" title="Fullscreen (F)">Fullscreen</button>
+    </div>
+
+    <p class="hint">Space play/pause | R replay | M sound | F fullscreen | Left/Right previous/next slide</p>
+  </div>
+
+  <section id="warnings" class="panel warn" hidden>
+    <h2>Warnings (playback still works)</h2>
+    <ul id="warnList"></ul>
+  </section>
+
+  <section id="error" class="panel err" hidden>
+    <h2 id="errTitle">This scenario does not validate</h2>
+    <ul id="errList"></ul>
+    <p class="hint">Fix the scenario, then rebuild this file with scripts/build.js.</p>
+  </section>
+</main>
+
+<!--RUNTIME-->
+<!--SCENARIO-->
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var playerEl = $('player'), stage = $('stage'), caption = $('caption'), counter = $('counter'),
+      titleEl = $('title'), scrub = $('scrub'), clock = $('clock'), playBtn = $('play'),
+      replayBtn = $('replay'), speedSel = $('speed'), soundBtn = $('sound'), fsBtn = $('fs'),
+      stagewrap = $('stagewrap'), warnBox = $('warnings'), warnList = $('warnList'),
+      errBox = $('error'), errTitle = $('errTitle'), errList = $('errList');
+
+  var P = window.Pres;
+  var player = null, audio = null, dragging = false;
+
+  function fillList(list, lines) {
+    list.textContent = '';
+    lines.forEach(function (line) {
+      var li = document.createElement('li');
+      li.textContent = line;
+      list.appendChild(li);
+    });
+  }
+
+  // a page-level error: the player is hidden and the reasons are listed
+  function fail(title, lines) {
+    playerEl.hidden = true;
+    warnBox.hidden = true;
+    errTitle.textContent = title;
+    fillList(errList, lines);
+    errBox.hidden = false;
+  }
+
+  function setPlaying(on) {
+    playBtn.textContent = on ? 'Pause' : 'Play';
+  }
+
+  function refreshSound() {
+    if (!audio) return;
+    var muted = audio.isMuted();
+    soundBtn.textContent = muted ? 'Sound: off' : 'Sound: on';
+    soundBtn.setAttribute('aria-pressed', String(!muted));
+  }
+
+  function fsElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  // ----------------------------------------------------------------- playback
+  function play() {
+    if (!player || !player.sc) return;
+    if (player.time >= player.duration - 0.05) player.seek(0);
+    player.play();
+    setPlaying(true);
+    update();
+  }
+
+  function pause() {
+    if (!player) return;
+    player.pause();
+    setPlaying(false);
+  }
+
+  function togglePlay() {
+    if (!player) return;
+    if (player.playing) pause(); else play();
+  }
+
+  function replay() {
+    if (!player || !player.sc) return;
+    player.seek(0);
+    play();
+  }
+
+  function step(dir) {
+    if (!player || !player.sc) return;
+    if (dir < 0) player.prev(); else player.next();
+    update();
+  }
+
+  // the progress bar: pause, jump to the slide that holds the time, then step the rest of the way
+  // (paused steps render frames but play no sound)
+  function scrubTo(value) {
+    if (!player || !player.sc) return;
+    var total = player.duration;
+    var t = Math.max(0, Math.min(total - 0.05, (value / 1000) * total));
+    var slides = player.sc.slides, idx = 0;
+    for (var i = 0; i < slides.length; i++) if (t >= slides[i].start) idx = i;
+    pause();
+    player.seek(idx);
+    player.acc = 0;
+    var rest = t - slides[idx].start;
+    if (rest > 0) player.step(rest);
+    update();
+  }
+
+  function applySpeed() {
+    if (!player) return;
+    player.speed = Number(speedSel.value) || 1;
+  }
+
+  // ----------------------------------------------------------------- sound
+  function toggleSound() {
+    if (!audio) return;
+    audio.setMuted(!audio.isMuted());
+    refreshSound();
+  }
+
+  // ----------------------------------------------------------------- fullscreen
+  function toggleFullscreen() {
+    if (fsElement()) {
+      var ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (typeof ex !== 'function') return;
+      var p = ex.call(document);
+      if (p && p.catch) p.catch(function () {});
+      return;
+    }
+    var req = stagewrap.requestFullscreen || stagewrap.webkitRequestFullscreen;
+    if (typeof req !== 'function') { caption.textContent = 'Fullscreen is not supported by this browser.'; return; }
+    try {
+      var r = req.call(stagewrap);
+      if (r && r.catch) r.catch(function () { caption.textContent = 'The browser refused fullscreen.'; });
+    } catch (e) {
+      caption.textContent = 'Fullscreen failed: ' + e.message;
+    }
+  }
+
+  function onFullscreenChange() {
+    fsBtn.textContent = fsElement() ? 'Exit fullscreen' : 'Fullscreen';
+  }
+
+  // ----------------------------------------------------------------- display
+  function update() {
+    if (!player || !player.sc) return;
+    var s = player.state();
+    var slides = player.sc.slides;
+    var idx = Math.max(0, s.slide);
+    var slide = player.slide;
+    var say = slide && slide.characters.find(function (c) { return c.say; });
+    counter.textContent = 'Slide ' + (idx + 1) + ' / ' + slides.length;
+    caption.textContent = say ? say.say : '';
+    clock.textContent = s.time.toFixed(1) + ' / ' + s.total.toFixed(1) + ' s';
+    if (!dragging) scrub.value = String(Math.round((s.time / Math.max(0.001, s.total)) * 1000));
+    setPlaying(player.playing);
+  }
+
+  // ----------------------------------------------------------------- keyboard
+  function onKey(e) {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !player) return;
+    var t = e.target || {};
+    var tag = t.tagName || '';
+    if (tag === 'SELECT' || t.isContentEditable) return;
+    var k = e.key;
+    if (k === ' ' || k === 'Spacebar') {
+      e.preventDefault();
+      if (e.repeat) return;
+      // a focused button would also fire a click on Space: drop its focus first
+      if (tag === 'BUTTON' || tag === 'INPUT') t.blur();
+      togglePlay();
+    } else if (k === 'ArrowLeft') {
+      e.preventDefault(); step(-1);
+    } else if (k === 'ArrowRight') {
+      e.preventDefault(); step(1);
+    } else if (k === 'm' || k === 'M') {
+      if (!e.repeat) toggleSound();
+    } else if (k === 'f' || k === 'F') {
+      if (!e.repeat) toggleFullscreen();
+    } else if (k === 'r' || k === 'R') {
+      if (!e.repeat) replay();
+    }
+  }
+
+  // ----------------------------------------------------------------- boot
+  function boot() {
+    if (!P || typeof P.Player !== 'function' || typeof P.validate !== 'function') {
+      fail('The player runtime did not load', ['This file is incomplete. Rebuild it with scripts/build.js.']);
+      return;
+    }
+
+    var keys = Object.keys(P.scenarios || {});
+    if (!keys.length) {
+      fail('No scenario in this file', ['Rebuild it with scripts/build.js <scenario.json | scenario.js>.']);
+      return;
+    }
+
+    // the built file holds one scenario; if there are more, play the first one that validates
+    var key = null, report = null;
+    try {
+      for (var i = 0; i < keys.length; i++) {
+        var r = P.validate(P.scenarios[keys[i]]);
+        if (!r.errors.length) { key = keys[i]; report = r; break; }
+      }
+      if (!report) { key = keys[0]; report = P.validate(P.scenarios[key]); }
+    } catch (e) {
+      fail('The scenario could not be checked', [String(e && e.message ? e.message : e)]);
+      return;
+    }
+
+    if (report.errors.length) {
+      fail('This scenario does not validate (' + report.errors.length + (report.errors.length === 1 ? ' error' : ' errors') + ')', report.errors);
+      return;
+    }
+
+    var scenario = P.scenarios[key];
+    titleEl.textContent = scenario.title || key;
+    document.title = scenario.title ? scenario.title + ' - Explainimals' : 'Explainimals';
+
+    if (report.warnings.length) {
+      fillList(warnList, report.warnings);
+      warnBox.hidden = false;
+    }
+
+    try {
+      player = new P.Player(stage, { loop: false });
+      player.on('end', function () { setPlaying(false); update(); });
+      player.load(scenario);
+    } catch (e) {
+      player = null;
+      fail('The scenario could not be played', [String(e && e.message ? e.message : e)]);
+      return;
+    }
+
+    // The engine re-lays itself out through a ResizeObserver on the stage box. Some browsers (and background
+    // tabs) deliver that late, so also re-fit on window events and after the first frame.
+    function refit() { if (player && typeof player._layout === 'function') player._layout(); }
+    window.addEventListener('resize', refit);
+    window.addEventListener('load', refit);
+    document.addEventListener('visibilitychange', refit);
+    requestAnimationFrame(function () { requestAnimationFrame(refit); });
+
+    audio = P.audio && P.audio.supported ? P.audio : null;
+    if (audio) {
+      audio.onChange(refreshSound);
+      refreshSound();
+    } else {
+      soundBtn.hidden = true;
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+    replayBtn.addEventListener('click', replay);
+    speedSel.addEventListener('change', applySpeed);
+    soundBtn.addEventListener('click', toggleSound);
+    fsBtn.addEventListener('click', toggleFullscreen);
+    scrub.addEventListener('pointerdown', function () { dragging = true; });
+    window.addEventListener('pointerup', function () { dragging = false; });
+    scrub.addEventListener('input', function () { scrubTo(Number(scrub.value)); });
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('fullscreenchange', function () { refit(); onFullscreenChange(); });
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    applySpeed();
+    update();
+    setInterval(update, 100);
+
+    var q = new URLSearchParams(window.location.search).get('autoplay');
+    if (q !== null && ['0', 'false', 'no', 'off'].indexOf(q.toLowerCase()) < 0) play();
+  }
+
+  try {
+    boot();
+  } catch (e) {
+    fail('The player failed to start', [String(e && e.message ? e.message : e)]);
+  }
+})();
+</script>
+</body>
+</html>

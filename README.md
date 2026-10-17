@@ -1,10 +1,167 @@
-# Pixel Explainer Studio
+# Explainimals
 
-2D pixel-art characters and presentations for explainer videos. Plain HTML/JS, no build step, no runtime dependencies.
-Pixel art is the one visual style of the project: every character, background, prop and UI piece is drawn from
-whole pixels (no smooth vector art, no render filters).
+Describe a topic and your AI makes a short animated explainer: pixel-art animals (penguin, frog, dog, cat, rabbit and
+bear) talk in speech bubbles while props, camera moves, music and sound effects play. The result is one
+self-contained `.html` file. Open it in any browser and press **Play**; sound stays off until you press Play.
 
-## Run it
+Explainimals ships as an AI skill for Claude (Claude Code, Claude.ai and the Claude desktop app) and for Codex. This
+repo holds both the skill (`plugin/`) and the studio used to build and tune it (everything else). Pixel art is the one
+visual style: every character, background, prop and UI piece is drawn from whole pixels (no smooth vector art, no
+render filters). Plain HTML/JS, no build step, no runtime dependencies.
+
+## Install with your AI
+
+The quickest way is to give this prompt to your AI agent. It reads the install guide in this repo and does the steps for you.
+
+```text
+Install the Explainimals skill from https://github.com/darwiniquina/Explainimals. Read INSTALL.md in that repo and follow it.
+```
+
+- Works in Claude Code and Codex, which are agents that can run commands.
+- In the Claude.ai or desktop chat, which cannot run commands, use the zip steps under "Claude.ai and the Claude desktop app" below.
+- Your AI tells you what it is going to do and asks before it changes anything.
+- Prefer to do it yourself? The manual steps follow.
+
+This needs the repo pushed to GitHub and public (or at least readable by your AI).
+
+## Install the skill
+
+Installing from this repo only copies the `plugin/` folder (the skill, 35 files, about 400 KB). The studio, the
+dashboard and the source art stay behind.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add darwiniquina/Explainimals
+```
+
+```bash
+claude plugin install explainimals@explainimals
+```
+
+From a local clone instead, give the folder with forward slashes (in bash, unquoted backslashes are stripped and the
+command fails with `Invalid marketplace source format`):
+
+```bash
+claude plugin marketplace add C:/path/to/Explainimals
+```
+
+To update, then restart Claude Code (bump `version` in `plugin/.claude-plugin/plugin.json` first when you publish a
+change, because installs are cached by version):
+
+```bash
+claude plugin marketplace update explainimals
+```
+
+```bash
+claude plugin update explainimals@explainimals
+```
+
+Check what is installed with `claude plugin list`. The GitHub form needs the repo to be pushed and reachable by your
+git credentials; the local-folder form was tested end to end.
+
+### Claude.ai and the Claude desktop app
+
+Zip the skill folder so `SKILL.md` sits inside a folder named `explainimals`. On Windows use the built-in `tar.exe`
+from the repo root:
+
+```powershell
+cd plugin\skills
+```
+
+```powershell
+tar.exe -a -c -f $HOME\Desktop\explainimals.zip explainimals
+```
+
+Do not use `Compress-Archive`: Windows PowerShell 5.1 writes backslash paths into the zip, which are invalid and can
+break the upload. On macOS or Linux: `cd plugin/skills && zip -r ~/Desktop/explainimals.zip explainimals`.
+
+Then open the Skills section of your settings, choose to upload a skill, and select `explainimals.zip`. The exact
+menu wording was not verified and may differ.
+
+### Codex
+
+Copy `plugin/skills/explainimals` to `~/.agents/skills/explainimals` (all projects) or
+`<your-project>/.agents/skills/explainimals` (one project). From the repo root, on Windows:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.agents\skills"; Copy-Item -Recurse -Force plugin\skills\explainimals "$HOME\.agents\skills\"
+```
+
+On macOS or Linux:
+
+```bash
+mkdir -p ~/.agents/skills && cp -r plugin/skills/explainimals ~/.agents/skills/
+```
+
+Codex reads skills from `$CWD/.agents/skills` (up to the repo root) and from `$HOME/.agents/skills`. If `explainimals`
+does not appear, restart Codex; list skills with `/skills`. Check the current Codex docs if these locations have
+moved (the paths come from OpenAI's Codex skills docs).
+
+Any other agent that reads `SKILL.md` folders can use the `explainimals` folder as it is. The skill needs Node.js 18
+or newer (it runs a validator and a build script); playing the finished `.html` needs only a browser.
+
+### Moving from the old pixel-explainer install
+
+```bash
+claude plugin uninstall pixel-explainer@pixel-explainer
+```
+
+```bash
+claude plugin marketplace remove pixel-explainer
+```
+
+Then install as above. For Codex, delete the old `pixel-explainer` folder from `~/.agents/skills/`; for Claude.ai,
+delete the old skill in your settings and upload `explainimals.zip`.
+
+## Use it
+
+Ask in plain language, for example:
+
+- "make an Explainimals video about how a refrigerator keeps food cold"
+- "make a funny explainer for kids about why the ocean is salty"
+- "explain how a bill becomes law, with the dog and the rabbit in a conversation"
+- "explain why bridges don't fall down using the penguin, bear and cat"
+- "make a short 30-second explainer about washing your hands"
+
+To invoke it explicitly, type `/explainimals:explainimals make an explainer about DNS` in Claude Code, or
+`$explainimals make an explainer about DNS` in Codex. The output goes to `explainimals-output/<topic>.html` in the
+folder you are working in. Open it and press **Play**. Keys: **Space** play/pause, **R** replay, **M** sound,
+**F** fullscreen, **Left / Right** previous or next slide.
+
+| Animal | Default role |
+|---|---|
+| Penguin | host: narrates, presents, closes |
+| Bear | expert: explains the detail |
+| Rabbit | quick questioner: asks what happens next |
+| Dog | everyday user who has the problem |
+| Cat | careful checker: verifies and reviews |
+| Frog | comic reactor: jokes, gets startled |
+
+Limits (v0.2.0): a fixed 240 x 135 pixel stage; 6 characters, 22 props and 7 backgrounds (the generated
+`plugin/skills/explainimals/references/catalog.md` lists them); at most 2 characters on screen per slide; a crowded
+slide falls back to a bottom caption, hidden prop labels or dropped props, which the validator reports; the output is
+an HTML file, not a video file.
+
+## Changing the skill
+
+The studio below is where the characters, props, backgrounds and engine are tuned. The skill folder is generated from
+it, so after changing anything in `character/` or `presentation/` run:
+
+```bash
+node scripts/package-skill.js
+```
+
+This copies the runtime and the example scenarios into `plugin/skills/explainimals`, regenerates the catalog and
+validates every example. The instructions the AI reads are edited in place under `plugin/skills/explainimals`
+(`SKILL.md` and `references/`, where `direction.md` is the creative guide); `presentation/SCENARIO.md` is the older
+engine-format reference. Bump the version in `plugin/.claude-plugin/plugin.json` when you publish.
+
+## The studio (dashboard)
+
+Everything below is the workshop: a dashboard to try characters, build scenes, play scenarios and browse assets.
+
+### Run it
 
 Serve the folder (opening `dashboard.html` directly also works):
 
@@ -23,8 +180,8 @@ One page, hash-routed, with a global character picker in the header (used by eve
 |---|---|---|
 | `#/home` | Home | counts, the live crew, scenario cards with Play |
 | `#/characters` | Characters | Playground (expression, pose, behaviour, part overrides, colours) and Gallery |
-| `#/scenes` | Scenes | scene maker for one character: row builder + JSON editor, play, download/load `.json` |
-| `#/presentations` | Presentations | scenario player: library, scrub, slides, JSON editor, fullscreen, `?scenario=ID&autoplay=1` |
+| `#/scenes` | Scenes | scene maker for one character: row builder (with per-scene action and zoom) + JSON editor, play, download/load `.json` |
+| `#/presentations` | Presentations | scenario player: library, scrub, slides, speed (0.5x, 1x, 2x), Loop slide, JSON editor, fullscreen, `?scenario=ID&autoplay=1` |
 | `#/assets` | Assets | backgrounds, props, pixel font and UI pieces, with filter and copy-name |
 
 ```
@@ -69,6 +226,9 @@ colour-class prefix (class names are global), and add a `<script>` tag to `dashb
   "look": { "x": 0.5, "y": 0 }, "eyes": "wide", "brows": "raised", "mouth": "O", "duration": 3 }
 ```
 
+Two optional scene fields, `action` (one of `Character.actions`, played when the scene starts) and `zoom` (1, 2 or 3,
+an integer enlargement that centres on the head at 2 or 3), are set with selects in the Scenes view.
+
 ### Conventions
 
 - `L` / `R` are the viewer's left / right.
@@ -78,7 +238,7 @@ colour-class prefix (class names are global), and add a `<script>` tag to `dashb
 
 ## Presentations (scenario player)
 
-A whole explainer is one JSON **scenario** (slides, characters, speech, props, panels, backgrounds); see
+A whole explainer is one JSON **scenario** (slides, characters, speech, props, panels, backgrounds, camera, character motion and emotes); see
 `presentation/SCENARIO.md` (format and authoring guide) and `presentation/CONTRACT.md` (240x135 stage, art rules).
 
 ```
@@ -87,10 +247,12 @@ presentation/registry.js      registerBackground / registerProp / Pres.catalog()
 presentation/font.js, ui.js   pixel font, speech bubble, bullet panel, title card, labels
 presentation/backgrounds.js   7 retro scenes
 presentation/props.js         22 retro icons
-presentation/engine.js        Pres.validate(scenario) and Pres.Player (fixed 12 fps steps)
+presentation/emotes.js        8 retro icons drawn above a character's head
+presentation/engine.js        Pres.validate(scenario), Pres.Player (fixed 12 fps steps), camera and character motion
 presentation/audio.js         Pres.audio: Web Audio music and sound effects (no files)
 presentation/AUDIO.md         sound contract: API, scenario fields, UI
 presentation/scenarios/       web-trip (penguin), sky-blue (cat + frog), how-claude-works (penguin, rabbit, bear, dog),
+                             how-claude-works-cinematic (camera, motion and emotes),
                              code-review-chat (all six characters, dialogue blocks: 'The code review')
 ```
 
@@ -115,7 +277,33 @@ to track.
 
 **Conversations.** A scenario can be a conversation: a `dialogue` block lists the cast and the lines, and the engine turns each line into a slide (see `presentation/SCENARIO.md`). The voices are expressive too: a happy line sounds brighter, a sad one slower and lower, and a question rises at the end. The example scenario 'The code review' (`presentation/scenarios/code-review-chat.js`) is a three-part conversation with all six characters.
 
+## Camera and motion
+
+Slides can move the camera and animate the characters. The full format is in `presentation/SCENARIO.md`; the
+art rule that allows integer zoom only is in `presentation/CONTRACT.md`.
+
+- **Camera**: `focus` (the speaker, a side, the face, a prop or a point), `zoom` 1, 2 or 3, and a `move`
+  (`punch-in`, `push-in`, `pull-out`, `reveal`, `pan`, `drift`). Optional `shake` and `letterbox`. A zoomed bubble
+  becomes a caption.
+- **Transitions**: `iris`, `flash`, `checker`, `fade-black` and `wipe-down`, alongside `cut`, `dissolve` and `wipe`.
+- **Character motion**: `enter` and `exit`, `walkTo` with a waddle, `gaze`, five body `action`s (`nod`, `shake`,
+  `hop`, `recoil`, `shiver`), eight `emote` icons above the head, and eight new poses.
+- **Player**: the Presentations view has a Speed select (0.5x, 1x, 2x) and a Loop slide checkbox.
+
+```json
+{ "id": "bug", "transition": "iris",
+  "camera": { "focus": "speaker", "zoom": 2, "move": "push-in", "shake": { "at": 1.2 } },
+  "characters": [
+    { "skin": "bear", "at": "left", "expression": "surprised", "pose": "facepalm",
+      "say": "The test failed, and it fails every time!", "enter": "hop",
+      "action": "recoil", "emote": { "id": "exclamation", "at": 0.3 } }
+  ] }
+```
+
 ## Next steps
 
-- Wrap `Character` and `Pres.Player` in a Remotion component (`tick(1 / fps)` per frame)
-- Package the scenario authoring guide as a skill that turns a script into a scenario
+- Wrap `Character` and `Pres.Player` in a Remotion component (`tick(1 / fps)` per frame). Camera moves, shake and
+  character actions are already driven by time, so they should render the same way.
+- Check the new camera moves and emotes in `presentation/assets-preview.html` before using them in a long scenario.
+- Done: the scenario authoring guide, including the camera and motion advice, is packaged as the Explainimals skill in `plugin/` (see "Install the skill").
+- Next for the skill: more props (moon, bed, clock, battery, food), a video export, and publishing the repo so the GitHub install form works.
