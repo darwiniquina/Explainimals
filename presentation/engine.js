@@ -19,7 +19,15 @@
   const CHAR = { w: 61, h: 76, top: 70 };                       // feet are `top` px below the box top
   const AT = { left: 4, center: 90, right: 175 };               // character box x for the named positions
   const ENTERS = ['none', 'pop', 'drop', 'slide-left', 'slide-right', 'dissolve'];
-  const TRANSITIONS = ['cut', 'dissolve', 'wipe'];
+  const TRANSITIONS = ['cut', 'dissolve', 'wipe', 'iris', 'flash', 'checker', 'fade-black', 'wipe-down'];
+  const CHAR_ENTERS = ['none', 'pop', 'drop', 'slide', 'hop', 'walk'];
+  const CHAR_EXITS = ['none', 'slide', 'hop'];
+  const GAZES = ['other', 'props', 'forward'];
+  const CAM_FOCUS = ['stage', 'speaker', 'listener', 'left', 'center', 'right', 'face', 'panel'];   // also 'prop:<id>' and [x, y]
+  const CAM_MOVES = ['none', 'punch-in', 'push-in', 'pull-out', 'reveal', 'pan', 'drift'];
+  const ZOOMS = [1, 2, 3];                                      // whole-number magnification only: pixels stay square
+  const DARK = '#0b0912';                                       // letterbox bars, iris and fade-black cover
+  const TR_LEN = { iris: 0.7, flash: 0.5 };                     // transition length in seconds (default 0.6)
   const RIGHT = { x0: 76, x1: 236 };                            // the area right of a left-standing character
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];   // 4x4 ordered dither
 
@@ -37,6 +45,14 @@
     positions: Object.keys(AT),
     enters: ENTERS,
     transitions: TRANSITIONS,
+    charEnters: CHAR_ENTERS,
+    charExits: CHAR_EXITS,
+    gazes: GAZES,
+    actions: global.Character && global.Character.actions ? global.Character.actions : [],
+    emotes: Pres.emotes ? Object.keys(Pres.emotes) : [],
+    cameraFocus: CAM_FOCUS,
+    cameraMoves: CAM_MOVES,
+    zooms: ZOOMS,
     sfx: Pres.audio ? Pres.audio.catalog().sfx : [],
     music: Pres.audio ? Pres.audio.catalog().music : [],
   });
@@ -100,9 +116,17 @@
       const props = ln.props !== undefined ? ln.props : head ? s.props : undefined;   // block props: first slide only
       if (props !== undefined) slide.props = props.slice();
       ['duration', 'sfx', 'panel', 'title'].forEach((k) => { if (ln[k] !== undefined) slide[k] = ln[k]; });
+      const cam = ln.camera !== undefined ? ln.camera : s.dialogue.camera;    // a line's camera replaces the block's
+      if (cam) slide.camera = cam;
       slide.characters = keys.map((pos) => {
-        if (pos === ln.who) return { at: pos, skin: cast[pos], say: ln.say, expression: ln.expression || 'happy', pose: ln.pose || 'idle', look: null };
-        return { at: pos, skin: cast[pos], expression: ln.react || 'curious', pose: 'idle', look: null };
+        const c = pos === ln.who
+          ? { at: pos, skin: cast[pos], say: ln.say, expression: ln.expression || 'happy', pose: ln.pose || 'idle', look: null }
+          : { at: pos, skin: cast[pos], expression: ln.react || 'curious', pose: 'idle', look: null };
+        // speaker: emote action gaze enter exit; listener: react_emote react_action react_gaze
+        const pre = pos === ln.who ? '' : 'react_';
+        ['emote', 'action', 'gaze'].forEach((k) => { if (ln[pre + k] !== undefined) c[k] = ln[pre + k]; });
+        if (pos === ln.who) ['enter', 'exit'].forEach((k) => { if (ln[k] !== undefined) c[k] = ln[k]; });
+        return c;
       });
       slide._from = `slides[${i}].dialogue.lines[${j}]`;
       return slide;
@@ -158,11 +182,48 @@
         if (c.expression) check(q + '.expression', c.expression, cat.expressions, 'expression');
         if (c.pose) check(q + '.pose', c.pose, cat.poses, 'pose');
         if (c.look && !(typeof c.look.x === 'number')) bad(q + '.look', 'must look like {"x": -1..1, "y": -1..1}');
+        if (c.enter !== undefined) check(q + '.enter', c.enter, CHAR_ENTERS, 'enter animation');
+        if (c.exit !== undefined) check(q + '.exit', c.exit, CHAR_EXITS, 'exit animation');
+        if (c.walkTo !== undefined) {
+          check(q + '.walkTo', c.walkTo, cat.positions, 'position');
+          if (c.walkTo === (c.at || 'left')) warnings.push(`${q}.walkTo: already standing at "${c.walkTo}"`);
+          if (c.walkAt !== undefined && !(typeof c.walkAt === 'number' && c.walkAt >= 0)) bad(q + '.walkAt', 'must be a number of seconds, 0 or more');
+        }
+        if (c.gaze !== undefined) check(q + '.gaze', c.gaze, GAZES, 'gaze');
+        [['action', cat.actions, 'action'], ['emote', cat.emotes, 'emote']].forEach(([key, list, what]) => {
+          const v = c[key];
+          if (v === undefined) return;
+          const obj = !!v && typeof v === 'object';
+          check(q + '.' + key + (obj ? '.id' : ''), obj ? v.id : v, list, what);
+          if (obj) ['at', 'duration'].forEach((f) => { if (v[f] !== undefined && !(typeof v[f] === 'number' && v[f] >= 0)) bad(`${q}.${key}.${f}`, 'must be a number of seconds, 0 or more'); });
+          if (obj && s.duration !== undefined && v.at >= s.duration) warnings.push(`${q}.${key}.at: ${v.at}s is at or after the slide's ${s.duration}s duration`);
+        });
         const slot = c.at || 'left';
         if (used.has(slot)) bad(q + '.at', `two characters at "${slot}"`);
         used.add(slot);
         if (c.say && c.say.length > 160) warnings.push(`${q}.say: ${c.say.length} characters is long; aim for under 110`);
       });
+      if (s.camera !== undefined) {
+        const cm = s.camera, q = p + '.camera';
+        if (!plainObj(cm)) bad(q, 'must be an object like {"focus": "speaker", "zoom": 2}');
+        else {
+          const focusOk = (f) => CAM_FOCUS.includes(f) || (Array.isArray(f) && f.length === 2 && f.every((n) => typeof n === 'number'))
+            || (typeof f === 'string' && f.startsWith('prop:') && propIds.includes(f.slice(5)));
+          const focusMsg = (f) => `unknown focus ${JSON.stringify(f)}. Valid: ${one(CAM_FOCUS)}, prop:<id>, [x, y]`;
+          if (cm.focus !== undefined && !focusOk(cm.focus)) bad(q + '.focus', focusMsg(cm.focus));
+          if (cm.from !== undefined && !focusOk(cm.from)) bad(q + '.from', focusMsg(cm.from));
+          if (cm.zoom !== undefined && !ZOOMS.includes(cm.zoom)) bad(q + '.zoom', `must be a whole number: ${one(ZOOMS)}`);
+          if (cm.move !== undefined) check(q + '.move', cm.move, CAM_MOVES, 'camera move');
+          if (cm.move === 'pan' && cm.from === undefined) bad(q + '.from', 'a pan needs a start: "from" (a focus value)');
+          if (cm.shake !== undefined && !(typeof cm.shake === 'boolean' || (plainObj(cm.shake) && (cm.shake.at === undefined || typeof cm.shake.at === 'number')))) bad(q + '.shake', 'must be true or {"at": seconds}');
+          if (cm.letterbox !== undefined && typeof cm.letterbox !== 'boolean') bad(q + '.letterbox', 'must be true or false');
+          const z = cm.zoom !== undefined ? cm.zoom : (cm.focus !== undefined && cm.focus !== 'stage' ? 2 : 1);
+          if (cm.move && cm.move !== 'none' && z === 1) warnings.push(`${q}: "${cm.move}" has no effect at zoom 1`);
+          if (z > 1 && (s.title || (s.panel && cm.focus !== 'panel'))) warnings.push(`${q}: a title card or panel is cropped when zoomed in; use zoom 1 or focus "panel"`);
+          if (typeof cm.focus === 'string' && cm.focus.startsWith('prop:') && !(s.props || []).some((pr) => (typeof pr === 'string' ? pr : pr && pr.id) === cm.focus.slice(5))) warnings.push(`${q}.focus: ${cm.focus} is not on this slide`);
+          if (cm.focus === 'panel' && !s.panel) warnings.push(`${q}.focus: "panel" but the slide has no panel`);
+        }
+      }
       (s.props || []).forEach((pr, j) => {
         const q = `${p}.props[${j}]`;
         const id = typeof pr === 'string' ? pr : pr && pr.id;
@@ -180,9 +241,7 @@
         (s.panel.bullets || []).forEach((b, j) => { if (String(b).length > 22) warnings.push(`${p}.panel.bullets[${j}]: ${String(b).length} characters will wrap; aim for 22 or fewer`); });
       }
       if (s.panel && s.title) warnings.push(`${p}: a title card and a panel on the same slide will overlap`);
-      if (s.title && chars.some((c) => c.say)) warnings.push(`${p}: a speech bubble on a title slide goes below the title card and may not fit; keep the greeting for the next slide`);
       if (s.title && s.title.w !== undefined && !(s.title.w >= 60 && s.title.w <= 230)) bad(p + '.title.w', 'must be between 60 and 230');
-      if (s.panel && chars.some((c) => c.say)) warnings.push(`${p}: a panel and a speech bubble share the right side; keep the bubble text short`);
       if (au && s.music !== undefined && s.music !== 'none') check(p + '.music', s.music, musicIds, 'music track');
       if (au && s.sfx !== undefined) {
         const list = [].concat(s.sfx);
@@ -217,10 +276,22 @@
       const cues = [].concat(s.sfx === undefined ? [] : s.sfx)
         .map((e) => (typeof e === 'string' ? { id: e, at: 0.15 + 0.4 * si++ } : { id: e && e.id, at: e && e.at }))
         .sort((a, b) => a.at - b.at);
+      const timed = (v, at, duration) => (v === undefined ? null : typeof v === 'string' ? { id: v, at, duration } : { id: v.id, at: v.at !== undefined ? v.at : at, duration: v.duration !== undefined ? v.duration : duration });
       const characters = (s.characters || (s.character ? [s.character] : [])).map((c) => ({
         skin: c.skin || d.skin, at: c.at || 'left', expression: c.expression || 'happy', pose: c.pose || 'idle',
         look: c.look || null, say: c.say || '', talking: c.talking,
+        enter: c.enter || 'none', exit: c.exit || 'none', gaze: c.gaze || null,
+        walkTo: c.walkTo || null, walkAt: c.walkAt !== undefined ? c.walkAt : 0.5,
+        action: timed(c.action, 0.4), emote: timed(c.emote, 0.6, 2),
       }));
+      const cm = s.camera;
+      const camera = !cm ? null : {
+        focus: cm.focus !== undefined ? cm.focus : 'stage', from: cm.from !== undefined ? cm.from : null,
+        zoom: cm.zoom !== undefined ? cm.zoom : (cm.focus !== undefined && cm.focus !== 'stage' ? 2 : 1),
+        move: cm.move || 'none',
+        shake: cm.shake ? { at: typeof cm.shake === 'object' && cm.shake.at !== undefined ? cm.shake.at : 0.3 } : null,
+        letterbox: !!cm.letterbox,
+      };
       const textLen = characters.reduce((n, c) => n + c.say.length, 0);
       const duration = s.duration || Math.max(3, Math.min(12, 1.4 + textLen * 0.07 + (s.panel ? s.panel.bullets.length * 0.8 : 0)));
       const props = (s.props || []).map((p, j) => {
@@ -229,7 +300,7 @@
       });
       const slide = {
         index: i, id: s.id || 'slide-' + (i + 1), background, characters, props, duration, start: t,
-        title: s.title || null, panel: s.panel || null, transition: s.transition || (i === 0 ? 'cut' : 'dissolve'), music, cues,
+        title: s.title || null, panel: s.panel || null, transition: s.transition || (i === 0 ? 'cut' : 'dissolve'), music, cues, camera,
       };
       t += duration;
       return slide;
@@ -270,8 +341,11 @@
       this.slideIndex = -1;
       this.handlers = { slide: [], end: [] };
       this.chars = new Map();               // "skin@at" -> { c: Character, el }
-      this.cache = { back: '', front: '', bgStatic: new Map() };
+      this.cache = { back: '', front: '', hud: '', bgStatic: new Map() };
       this.acc = 0;
+      this.speed = 1;                       // playback speed multiplier (the dashboard's Speed select)
+      this.loopSlide = false;               // repeat the current slide
+      this.view = { z: 1, vx: 0, vy: 0, sx: 0, sy: 0 };   // camera: zoom, view origin (stage px), shake offset
       this._build();
       this.ro = new ResizeObserver(() => this._layout());
       this.ro.observe(container.parentElement || container);
@@ -289,20 +363,27 @@
       const mk = (cls) => { const d = document.createElement('div'); d.className = cls; d.style.cssText = 'position:absolute;left:0;top:0;'; c.append(d); return d; };
       this.stage = mk('pres-stage');
       this.stage.style.overflow = 'hidden';
-      const svg = (cls) => {
+      this.stage.style.background = DARK;                         // shows at the edge while the camera shakes
+      // the world (background, characters, title/panel/bubble) is what the camera zooms and pans; the hud
+      // (letterbox bars, caption bubble, transition cover) stays put on the screen
+      this.world = document.createElement('div');
+      this.world.style.cssText = 'position:absolute;left:0;top:0;';
+      this.stage.append(this.world);
+      const svg = (cls, parent) => {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', `0 0 ${G.w} ${G.h}`);
         s.setAttribute('shape-rendering', 'crispEdges');
         s.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;';
         s.classList.add(cls);
-        this.stage.append(s);
+        parent.append(s);
         return s;
       };
-      this.backSvg = svg('pres-back');
+      this.backSvg = svg('pres-back', this.world);
       this.charLayer = document.createElement('div');
       this.charLayer.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;';
-      this.stage.append(this.charLayer);
-      this.frontSvg = svg('pres-front');
+      this.world.append(this.charLayer);
+      this.frontSvg = svg('pres-front', this.world);
+      this.hudSvg = svg('pres-hud', this.stage);
       this._layout();
     }
 
@@ -318,12 +399,26 @@
       this.container.style.width = G.w * this.k + 'px';
       this.container.style.height = G.h * this.k + 'px';
       this.container.style.marginLeft = this.container.style.marginRight = 'auto';
+      this._applyView();
       this.chars.forEach((o) => this._placeChar(o));
     }
 
+    // size and position of the world for the current camera: every stage pixel is k * z screen pixels, so the
+    // zoom is a whole-number magnification and the art stays pixel-perfect
+    _applyView() {
+      const v = this.view, kz = this.k * v.z;
+      const st = this.world.style;
+      st.width = G.w * kz + 'px';
+      st.height = G.h * kz + 'px';
+      st.left = (-v.vx * kz + v.sx * this.k) + 'px';
+      st.top = (-v.vy * kz + v.sy * this.k) + 'px';
+    }
+
     _placeChar(o) {
-      // `visible` is part of the style so a re-layout never brings back a character who left the slide
-      o.el.style.cssText = `position:absolute;left:${o.x * this.k}px;top:${o.y * this.k}px;width:${CHAR.w * this.k}px;height:${CHAR.h * this.k}px;` + (o.visible === false ? 'display:none;' : '');
+      // `visible` is part of the style so a re-layout never brings back a character who left the slide;
+      // dx / dy are the entrance, exit and walk offsets in stage pixels
+      const kz = this.k * this.view.z;
+      o.el.style.cssText = `position:absolute;left:${(o.x + (o.dx || 0)) * kz}px;top:${(o.y + (o.dy || 0)) * kz}px;width:${CHAR.w * kz}px;height:${CHAR.h * kz}px;` + (o.visible === false || o.hide ? 'display:none;' : '');
     }
 
     // ---------------------------------------------------------------- loading
@@ -364,7 +459,7 @@
       requestAnimationFrame((now) => {
         this._rafOn = false;
         if (!this.playing) return;
-        this.step(Math.min(0.25, (now - this._lastNow) / 1000));
+        this.step(Math.min(0.25, (now - this._lastNow) / 1000) * (this.speed > 0 ? this.speed : 1));
         this._lastNow = now;
         this._raf();
       });
@@ -383,7 +478,9 @@
 
     _advance(interval) {
       this.time += interval;
-      if (this.time >= this.sc.total) {
+      if (this.loopSlide && this.slide && this.time >= this.slide.start + this.slide.duration) {
+        this.time = this.slide.start; this._enterSlide(this.slide.index);       // repeat this slide
+      } else if (this.time >= this.sc.total) {
         if (this.loop) { this.time = 0; this._enterSlide(0); } else { this.time = this.sc.total - 1e-6; this.playing = false; if (this._audioOn()) global.Pres.audio.stopMusic(); this._emit('end'); }
       }
       const slide = this._slideAt(this.time);
@@ -428,6 +525,7 @@
       this.slide = slide;
       this._fired = new Set();                                        // cue indexes already played in this entry
       this._prevShown = 0;                                            // bubble characters already voiced in this entry
+      this._acted = new Set();                                        // characters whose action already started in this entry
       if (this.playing && this._audioOn()) global.Pres.audio.music(slide.music);
       this.bg = Pres.backgrounds[slide.background];
       if (!this.cache.bgStatic.has(slide.background)) {
@@ -435,6 +533,7 @@
       }
       this.theme = this.bg.tone === 'dark' ? 'dark' : 'light';
       this._layoutSlide(slide);
+      this._planCamera(slide);
 
       // characters: reuse an instance with the same skin and spot so poses glide between slides
       const keep = new Set();
@@ -450,23 +549,124 @@
         }
         o.x = AT[c.at];
         o.y = this.bg.ground - CHAR.top;
+        o.dx = o.dy = 0;
         o.visible = true;
         this._placeChar(o);
-        o.c.apply({ expression: c.expression, pose: c.pose, look: c.look }, { snap: false });
+        o.c.apply({ expression: c.expression, pose: c.pose, look: c.look || this._gazeLook(slide, c) }, { snap: false });
         o.spec = c;
       });
       this.chars.forEach((o, id) => { if (!keep.has(id)) { o.visible = false; this._placeChar(o); } });
       this._emit('slide', i, slide);
     }
 
+    // ---------------------------------------------------------------- camera and motion
+    // gaze: where the eyes point when the slide gives no explicit `look` (x > 0 is the viewer's right)
+    _gazeLook(slide, c) {
+      if (!c.gaze) return null;
+      if (c.gaze === 'forward') return { x: 0, y: 0 };
+      const mine = AT[c.at] + CHAR.w / 2;
+      if (c.gaze === 'other') {
+        const o = slide.characters.find((q) => q !== c);
+        return o ? { x: AT[o.at] > AT[c.at] ? 0.8 : -0.8, y: 0 } : null;
+      }
+      const r = this.L.region;                                         // 'props': toward the free area
+      return { x: (r.x0 + r.x1) / 2 > mine ? 0.8 : -0.8, y: 0.4 };
+    }
+
+    // the stage pixel a camera focus value points at; `zoom` decides how high on a character the centre sits
+    _focusPoint(f, zoom, slide) {
+      const L = this.L, top = this.bg.ground - CHAR.top, mid = [G.w / 2, G.h / 2];
+      if (Array.isArray(f)) return f;
+      const bodyY = top + (zoom >= 3 ? 22 : zoom === 2 ? 24 : 34);          // close-ups sit higher: head and shoulders, room for an emote
+      const chars = slide.characters;
+      const speaker = chars.find((c) => c.say) || chars[0];
+      const listener = chars.find((c) => c !== speaker) || speaker;
+      const at = (c, y) => (c ? [AT[c.at] + CHAR.w / 2, y] : mid);
+      if (f === 'speaker') return at(speaker, bodyY);
+      if (f === 'listener') return at(listener, bodyY);
+      if (f === 'face') return at(speaker, top + 22);
+      if (AT[f] !== undefined) return [AT[f] + CHAR.w / 2, bodyY];
+      if (f === 'panel') return L.panel ? [L.panel.x + L.panel.r.w / 2, L.panel.y + L.panel.r.h / 2] : mid;
+      if (typeof f === 'string' && f.startsWith('prop:')) {
+        const it = L.props.find((i) => i.p.id === f.slice(5));
+        return it ? [it.x + it.def.w / 2, it.y + it.def.h / 2] : mid;
+      }
+      return mid;
+    }
+
+    _planCamera(slide) {
+      const c = slide.camera;
+      this.L.cam = c ? { to: this._focusPoint(c.focus, c.zoom, slide), from: c.from !== null ? this._focusPoint(c.from, c.zoom, slide) : null } : null;
+    }
+
+    // camera at slide-local time lt: whole-number zoom, view origin in whole stage pixels, shake offset
+    _cameraAt(slide, lt) {
+      const c = slide.camera;
+      if (!c) return { z: 1, vx: 0, vy: 0, sx: 0, sy: 0 };
+      const p = Math.max(0, Math.min(1, lt / slide.duration));
+      const pushZ = () => 1 + Math.min(c.zoom - 1, Math.floor(Math.max(0, Math.min(0.999, (p - 0.1) / 0.7)) * c.zoom));
+      let z = c.zoom, [cx, cy] = this.L.cam.to;
+      if (c.move === 'punch-in') z = lt < 0.4 ? 1 : c.zoom;
+      else if (c.move === 'push-in') z = pushZ();
+      else if (c.move === 'pull-out') z = c.zoom + 1 - pushZ();
+      else if (c.move === 'reveal') z = p < 0.55 ? c.zoom : 1;
+      else if (c.move === 'pan' && this.L.cam.from) {
+        const f = this.L.cam.from, u = Math.max(0, Math.min(1, (lt - 0.3) / Math.max(0.5, Math.min(2, slide.duration - 0.9)))), e = u * u * (3 - 2 * u);
+        cx = f[0] + (cx - f[0]) * e; cy = f[1] + (cy - f[1]) * e;
+      } else if (c.move === 'drift') cx += -4 + 8 * p;
+      const vw = G.w / z, vh = G.h / z, clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+      const vx = clamp(Math.round(cx - vw / 2), 0, Math.floor(G.w - vw)), vy = clamp(Math.round(cy - vh / 2), 0, Math.floor(G.h - vh));
+      let sx = 0, sy = 0;
+      if (c.shake) {                                                   // 6 steps, alternating and shrinking
+        const n = Math.floor((lt - c.shake.at) * this.fps + 1e-6);
+        if (n >= 0 && n < 6) { const a = [3, 3, 2, 2, 1, 1][n]; sx = n % 2 ? -a : a; sy = a > 1 ? (n % 2 ? 1 : -1) : 0; }
+      }
+      return { z, vx, vy, sx, sy };
+    }
+
+    // entrance, exit and walk offsets of one character at slide-local time lt (stage pixels)
+    _charMotion(c, slide, lt) {
+      const step = Math.floor(lt * this.fps + 1e-6), home = AT[c.at];
+      const ease = (u) => 1 - (1 - u) * (1 - u);
+      const off = (x) => (x < 100 ? -(CHAR.w + 4) - x : G.w + 4 - x);   // dx that puts a character just off the nearest edge
+      let dx = 0, dy = 0, hide = false;
+      if (c.enter === 'pop') {
+        if (lt < 0.25) hide = true; else { const s = Math.floor((lt - 0.25) * this.fps + 1e-6); if (s < 3) dy = [-5, -2, -1][s]; }
+      } else if (c.enter === 'drop') {
+        if (lt < 0.15) hide = true; else { const s = Math.floor((lt - 0.15) * this.fps + 1e-6); if (s < 6) dy = [-60, -38, -22, -10, -4, -1][s]; }
+      } else if (c.enter !== 'none' && lt < 1) {                        // slide | hop | walk: in from the nearest edge
+        dx = Math.round(off(home) * (1 - ease(lt)));
+        if (c.enter === 'hop') dy = -Math.round(Math.abs(Math.sin(lt * Math.PI * 3)) * 6);
+        else if (c.enter === 'walk') dy = -(step % 2);
+      }
+      const t0 = slide.duration - 0.6;
+      if (c.exit !== 'none' && lt > t0) {
+        const u = Math.min(1, (lt - t0) / 0.6);
+        dx += Math.round(off(home) * u * u);
+        dy += c.exit === 'hop' ? -Math.round(Math.abs(Math.sin(u * Math.PI * 2)) * 5) : -(step % 2);
+      }
+      if (c.walkTo && lt >= c.walkAt) {
+        const u = Math.min(1, (lt - c.walkAt) / 1.2);
+        dx += Math.round((AT[c.walkTo] - home) * ease(u));
+        if (u < 1) dy -= step % 2;
+      }
+      return { dx, dy, hide };
+    }
+
     // ---------------------------------------------------------------- layout
     // The stage is shared out like this: characters stand in their spots; everything else (title card,
     // panel, props, bubble) goes in the widest free gap between the characters, so nothing lands on top
-    // of a character. Speech bubbles sit beside the speaker's head, but below a title card or panel.
+    // of a character. Speech bubbles sit beside the speaker's head, but below a title card or panel. When
+    // the bubble would hit a prop, a character, the panel or the title card, has no room, or the slide is
+    // zoomed, the speech becomes a caption at the bottom and the props rise above it. The speech is never
+    // dropped; props that still do not fit are dropped from the end of the list (L.droppedProps).
     _layoutSlide(slide) {
       const ui = Pres.ui, th = this.theme, L = (this.L = {});
       const ground = this.bg.ground;
       const say = slide.characters.find((c) => c.say);
+      const zoomed = !!slide.camera && slide.camera.zoom > 1;
+      const box = (x, y, w, h) => ({ x, y, w, h });
+      const hits = (a, b, m = 0) => a.x - m < b.x + b.w && b.x < a.x + a.w + m && a.y - m < b.y + b.h && b.y < a.y + a.h + m;   // a grown by m px
 
       // widest free interval between the characters (ties go to the right-hand one)
       const boxes = slide.characters.map((c) => [AT[c.at] - 2, AT[c.at] + CHAR.w + 2]).sort((p, q) => p[0] - q[0]);
@@ -486,7 +686,11 @@
         const r = ui.panel({ title: slide.panel.title || '', bullets: slide.panel.bullets, maxWidth: Math.min(150, regionW), theme: th });
         L.panel = { r, x: region.x1 - r.w, y: 6, n: slide.panel.bullets.length, maxW: Math.min(150, regionW) };
       }
-      if (say && ui) {
+      const solid = [L.title, L.panel].filter(Boolean).map((s) => box(s.x, s.y, s.r.w, s.r.h));
+
+      // the speech bubble beside the speaker's head (a zoomed slide always uses the caption)
+      let bub = null;
+      if (say && ui && !zoomed) {
         const leftSide = AT[say.at] < 100;
         // the bubble may not reach another character: stop it short of their box
         const others = slide.characters.filter((c) => c !== say);
@@ -496,15 +700,115 @@
         const bx1 = leftSide
           ? Math.min(G.w - 4, ...others.filter((o) => AT[o.at] > AT[say.at]).map((o) => AT[o.at] - 3))
           : AT[say.at] + 12;
-        const bargs = { text: say.say, maxWidth: Math.max(60, Math.min(150, bx1 - bx0)), tail: leftSide ? 'left' : 'right', theme: th };
-        const r = ui.bubble(bargs);
+        const args = { text: say.say, maxWidth: Math.max(60, Math.min(150, bx1 - bx0)), tail: leftSide ? 'left' : 'right', theme: th };
+        const r = ui.bubble(args);
         const bx = leftSide ? bx0 : Math.max(4, bx1 - r.w);
         const tipY = ground - CHAR.top + 22;                               // head height
         let by = Math.max(4, Math.min(ground - CHAR.top - 2, tipY - (r.tip ? r.tip.y : r.h)));
         const above = L.title || L.panel;                                  // never cover a title card or panel
         if (above) by = Math.max(by, above.y + above.r.h + 3);
-        L.bubble = by + r.h <= ground - 2 ? { r, x: bx, y: by, args: bargs, type: null } : null;    // no room: skip it (validate warns)
-        if (L.bubble && this.sc.typewriter && r.total !== undefined && r.lines) {
+        bub = { r, args, x: bx, y: by, fits: by + r.h <= ground - 2 };     // fits: there is room above the floor
+      }
+
+      // the caption: the bottom caption that zoomed slides use, above any letterbox bar. A zoomed slide keeps its
+      // 200 px caption; a caption on a crowded whole-stage slide takes the full width, so it is as short as it can be
+      let cap = null;
+      if (say && ui) {
+        const args = { text: say.say, maxWidth: zoomed ? 200 : G.w - 12, tail: 'none', theme: th }, r = ui.bubble(args);
+        cap = { r, args, x: Math.round((G.w - r.w) / 2), y: G.h - r.h - (slide.camera && slide.camera.letterbox ? 14 : 5) };
+      }
+
+      // props: explicit positions stay; the others share the floor (see rowsOf, layRows and fitAuto)
+      const items = slide.props.map((p) => ({ p, def: Pres.props[p.id], lab: p.label && ui ? ui.label(p.label, { theme: th }) : null }));
+      const auto = items.filter((it) => !it.p.at);
+      items.forEach((it) => { if (it.p.at) { it.x = it.p.at[0]; it.y = it.p.at[1]; } });
+      let labelsOn = true;                                               // whether the chosen arrangement shows labels
+      // the boxes of a prop at (x, y): the sprite and, with labels on, its label drawn 3 px below it (see _render)
+      const propBoxes = (it, x, y, on) => {
+        const out = [box(x, y, it.def.w, it.def.h)];
+        if (on && it.lab) out.push(box(Math.round(x + it.def.w / 2 - it.lab.w / 2), y + it.def.h + 3, it.lab.w, it.lab.h));
+        return out;
+      };
+      const slotOf = (it, on) => Math.max(it.def.w, on && it.lab ? it.lab.w : 0);
+      const wOf = (list, gap, on) => list.reduce((n, it) => n + slotOf(it, on), 0) + gap * Math.max(0, list.length - 1);
+      const fitsRow = (list, gap, on) => wOf(list, gap, on) <= regionW + 4;   // 2 px into a character's margin, as before
+      const labelExt = (list, on) => Math.max(0, ...list.map((it) => (on && it.lab ? it.lab.h + 3 : 0)));
+
+      // the arrangements to try, in order: one row at gap 8, 4, 2; then two rows at gap 2, the bottom row taking
+      // the leading props (longest bottom row first). Each row must fit the region horizontally.
+      const arrangements = (list, on) => {
+        const out = [];
+        [8, 4, 2].forEach((gap) => { if (fitsRow(list, gap, on)) out.push([{ list, gap }]); });
+        for (let k = list.length - 1; k >= 1; k--) {
+          const a = list.slice(0, k), b = list.slice(k);
+          if (fitsRow(a, 2, on) && fitsRow(b, 2, on)) out.push([{ list: a, gap: 2 }, { list: b, gap: 2 }]);
+        }
+        return out;
+      };
+
+      // rows with the bottom row's props standing on floorY; null when a row is too wide, runs off the top
+      // or comes within 3 px of the title card or panel
+      const layRows = (rows, floorY, on) => {
+        const placed = [];
+        let line = floorY, top = floorY, bottom = -Infinity;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (i) line = top - 3 - labelExt(row.list, on);                // the upper row's labels end 3 px above the row below
+          if (!fitsRow(row.list, row.gap, on)) return null;
+          let x = Math.max(region.x0 - 2, Math.round((region.x0 + region.x1) / 2 - wOf(row.list, row.gap, on) / 2));
+          row.list.forEach((it) => {
+            placed.push({ it, x: x + Math.round((slotOf(it, on) - it.def.w) / 2), y: line - it.def.h });
+            x += slotOf(it, on) + row.gap;
+          });
+          top = line - Math.max(0, ...row.list.map((it) => it.def.h));
+          bottom = Math.max(bottom, line + labelExt(row.list, on));
+        }
+        const clear = placed.every(({ it, x, y }) => propBoxes(it, x, y, on).every((b) => !solid.some((s) => hits(s, b, 3))));
+        return top >= 0 && clear ? { placed, bottom } : null;
+      };
+
+      // the first arrangement of these props that clears the panel and title, with each arrangement raised (never
+      // moved sideways) so that its lowest label ends at or above `limit`; null when none does
+      const layout = (list, limit, on) => {
+        for (const rows of arrangements(list, on)) {
+          let lay = layRows(rows, ground - 12, on);
+          if (lay && lay.bottom > limit) lay = layRows(rows, ground - 12 - (lay.bottom - limit), on);
+          if (lay) return lay;
+        }
+        return null;
+      };
+
+      // the auto props that fit: for each count, first with labels, then as icons only (labelsOn false);
+      // props are dropped from the end only when neither arrangement fits all of them
+      const fitAuto = (limit) => {
+        for (let n = auto.length; n >= 0; n--) {
+          for (const on of [true, false]) {
+            const lay = layout(auto.slice(0, n), limit, on);
+            if (lay) { labelsOn = on; return { lay, dropped: auto.slice(n) }; }
+          }
+        }
+        labelsOn = true;
+        return { lay: { placed: [] }, dropped: auto };
+      };
+      const place = (f) => f.lay.placed.forEach(({ it, x, y }) => { it.x = x; it.y = y; });
+      let fit = fitAuto(Infinity);
+      place(fit);
+
+      // the bubble beside the speaker stays unless it hits a shown prop, a character, the panel or the title card
+      const shown = items.filter((it) => !fit.dropped.includes(it)).flatMap((it) => propBoxes(it, it.x, it.y, labelsOn));
+      const beside = bub && bub.fits ? box(bub.x, bub.y, bub.r.w, bub.r.h) : null;
+      const caption = !!cap && (zoomed || !beside || shown.some((p) => hits(beside, p)) || solid.some((s) => hits(s, beside))
+        || slide.characters.some((c) => c !== say && hits(beside, box(AT[c.at], ground - CHAR.top, CHAR.w, CHAR.h))));
+      if (caption) {
+        fit = fitAuto(cap.y - 2);                                        // the lowest label ends 2 px above the caption
+        place(fit);
+      }
+
+      if (say && ui) {
+        L.bubble = caption ? { r: cap.r, x: cap.x, y: cap.y, args: cap.args, type: null, hud: true, caption: true }
+          : { r: bub.r, x: bub.x, y: bub.y, args: bub.args, type: null, hud: false, caption: false };
+        const r = L.bubble.r;
+        if (this.sc.typewriter && r.total !== undefined && r.lines) {
           // typewriter: the text is typed out; `,;:` pause a little and `.!?` pause longer (AUDIO.md, Speech)
           const chars = r.lines.join(''), T0 = 0.3;
           const cum = [], weights = [];
@@ -519,18 +823,9 @@
         }
       }
 
-      // props: explicit positions, otherwise one row on the floor in the free region
-      const items = slide.props.map((p) => ({ p, def: Pres.props[p.id] }));
-      const auto = items.filter((it) => !it.p.at);
-      if (auto.length) {
-        auto.forEach((it) => { it.slotW = Math.max(it.def.w, it.p.label && ui ? ui.label(it.p.label, { theme: th }).w : 0); });
-        const gap = 8, total = auto.reduce((n, it) => n + it.slotW, 0) + gap * (auto.length - 1);
-        let x = Math.max(region.x0 - 2, Math.round((region.x0 + region.x1) / 2 - total / 2));
-        const base = ground - 12;
-        auto.forEach((it) => { it.x = x + Math.round((it.slotW - it.def.w) / 2); it.y = base - it.def.h; x += it.slotW + gap; });
-      }
-      items.forEach((it) => { if (it.p.at) { it.x = it.p.at[0]; it.y = it.p.at[1]; } });
-      L.props = items;
+      L.props = items.filter((it) => !fit.dropped.includes(it));
+      L.droppedProps = fit.dropped.map((it) => it.p.id);
+      L.labelsHidden = !labelsOn && items.some((it) => it.lab);       // icons only: every label on the slide is left out
     }
 
     // ---------------------------------------------------------------- one rendered step
@@ -555,7 +850,7 @@
         else if (p.enter === 'dissolve' && step < 6) out = maskBuf(buf, (step + 1) / 6);
         else if (p.enter === 'pop' && step === 0) out = buf.clone().outline('#ffffff');
         back.blit(out, it.x + dx, it.y + dy);
-        if (p.label && Pres.ui && step >= 2) {
+        if (p.label && Pres.ui && !L.labelsHidden && step >= 2) {
           const lab = Pres.ui.label(p.label, { theme: th });
           back.blit(lab.buf, Math.round(it.x + def.w / 2 - lab.w / 2), it.y + def.h + 3);
         }
@@ -566,14 +861,34 @@
 
       // characters: the speaker's mouth moves while its text is typed (or the old window without a typewriter)
       const ty = L.bubble && L.bubble.type;
-      this.chars.forEach((o) => {
+      const cam = this._cameraAt(slide, lt), v = this.view;
+      const camMoved = cam.z !== v.z || cam.vx !== v.vx || cam.vy !== v.vy || cam.sx !== v.sx || cam.sy !== v.sy;
+      if (camMoved) { this.view = cam; this._applyView(); }
+      const emotes = [];                                      // emotes to draw this step, above the characters' heads
+      this.chars.forEach((o, id) => {
         if (!o.spec || o.visible === false) return;
         if (o.spec.say && ty) o.c.setTalking(lt > ty.T0 && lt < ty.T0 + ty.typeDur + 0.15);
         else o.c.setTalking(o.spec.say ? lt > 0.15 && lt < slide.duration - 0.5 : !!o.spec.talking);
+        // entrance, exit and walk offsets; re-place the element only when something changed
+        const m = this._charMotion(o.spec, slide, lt);
+        if (camMoved && cam.z !== v.z || m.dx !== o.dx || m.dy !== o.dy || m.hide !== !!o.hide) {
+          o.dx = m.dx; o.dy = m.dy; o.hide = m.hide;
+          this._placeChar(o);
+        }
+        const a = o.spec.action;
+        if (a && !this._acted.has(id) && lt >= a.at && typeof o.c.action === 'function') { this._acted.add(id); o.c.action(a.id); }
+        const e = o.spec.emote, def = e && Pres.emotes && Pres.emotes[e.id];
+        if (def && !o.hide && lt >= e.at && lt < e.at + e.duration) {
+          const buf = new Pres.Buf();
+          def.draw(buf, lt - e.at);
+          // above the head, but never above the top of a zoomed-in view
+          emotes.push({ buf, x: Math.round(o.x + o.dx + CHAR.w / 2 - def.w / 2), y: Math.max(o.y + o.dy - def.h - 1, cam.vy + 2) });
+        }
       });
 
-      // front layer: title card, panel, bubble, transition cover
-      const front = new Pres.Buf();
+      // front layer (zoomed with the world): title card, panel, bubble, emotes; hud (never zoomed): caption bubble, letterbox, transition cover
+      const front = new Pres.Buf(), hud = new Pres.Buf();
+      emotes.forEach((e) => front.blit(e.buf, e.x, e.y));
       if (L.title && lt > 0.1) front.blit(L.title.r.buf, L.title.x, L.title.y);
       if (L.panel && lt > 0.2) {
         const n = L.panel.n, span = Math.max(1, slide.duration - 1.6) / n;
@@ -586,29 +901,39 @@
         front.blit(L.panel.cache.get(shown).buf, L.panel.x, L.panel.y);
       }
       if (L.bubble && lt > 0.3 && lt < slide.duration - 0.2) {
-        if (!ty) front.blit(L.bubble.r.buf, L.bubble.x, L.bubble.y);
+        const into = L.bubble.hud ? hud : front;
+        if (!ty) into.blit(L.bubble.r.buf, L.bubble.x, L.bubble.y);
         else {
           // typing only changes the revealed count; the box size is fixed, so each count is built once
           const b = L.bubble, n = typedCount(ty, lt);
           if (!b.cache) b.cache = new Map();
           if (!b.cache.has(n)) b.cache.set(n, Pres.ui.bubble(Object.assign({}, b.args, { reveal: n })));
-          front.blit(b.cache.get(n).buf, b.x, b.y);
+          into.blit(b.cache.get(n).buf, b.x, b.y);
         }
       }
 
-      const TR = 0.6;                                         // transition length in seconds
-      if (slide.transition !== 'cut' && lt < TR) {
-        const p = lt / TR, cover = new Pres.Buf(), col = th === 'dark' ? '#1d1633' : '#fff6e8';
-        if (slide.transition === 'dissolve') {
-          for (let y = 0; y < G.h; y++) for (let x = 0; x < G.w; x++) if (!dither(x, y, p)) cover.set(x, y, col);
-        } else {                                              // wipe: a hard-edged curtain that slides away to the right
-          const edge = Math.floor(p * G.w);
-          for (let y = 0; y < G.h; y++) for (let x = edge; x < G.w; x++) cover.set(x, y, col);
-        }
-        front.blit(cover, 0, 0);
-      }
+      if (slide.camera && slide.camera.letterbox) { hud.rect(0, 0, G.w, 10, DARK); hud.rect(0, G.h - 10, G.w, 10, DARK); }
+
+      const TR = TR_LEN[slide.transition] || 0.6;             // transition length in seconds
+      if (slide.transition !== 'cut' && lt < TR) hud.blit(this._cover(slide.transition, lt / TR, th), 0, 0);
       const frontMarkup = front.svg();
       if (frontMarkup !== this.cache.front) { this.frontSvg.innerHTML = frontMarkup; this.cache.front = frontMarkup; }
+      const hudMarkup = hud.svg();
+      if (hudMarkup !== this.cache.hud) { this.hudSvg.innerHTML = hudMarkup; this.cache.hud = hudMarkup; }
+    }
+
+    // the transition cover at progress p (0..1) of the new slide: what is still hiding it
+    _cover(kind, p, th) {
+      const cover = new Pres.Buf(), col = th === 'dark' ? '#1d1633' : '#fff6e8';
+      const fill = (test, c) => { for (let y = 0; y < G.h; y++) for (let x = 0; x < G.w; x++) if (test(x, y)) cover.set(x, y, c); };
+      if (kind === 'dissolve') fill((x, y) => !dither(x, y, p), col);
+      else if (kind === 'fade-black') fill((x, y) => !dither(x, y, p), DARK);
+      else if (kind === 'wipe') { const edge = Math.floor(p * G.w); fill((x) => x >= edge, col); }   // a hard-edged curtain that slides away to the right
+      else if (kind === 'wipe-down') { const edge = Math.floor(p * G.h); fill((x, y) => y >= edge, col); }
+      else if (kind === 'iris') { const r = p * 142; fill((x, y) => (x - 120) * (x - 120) + (y - 67) * (y - 67) > r * r, DARK); }   // a circle opens from the middle
+      else if (kind === 'checker') fill((x, y) => BAYER[((y >> 3) & 3) * 4 + ((x >> 3) & 3)] >= p * 16 + 0.5 * ((((x >> 3) + (y >> 3)) & 1)), col);   // 8x8 blocks reveal in a scattered order
+      else if (kind === 'flash') { if (p < 0.25) fill(() => true, '#ffffff'); else fill((x, y) => !dither(x, y, (p - 0.25) / 0.75), '#ffffff'); }
+      return cover;
     }
 
     // snapshot useful for tests and for the player UI

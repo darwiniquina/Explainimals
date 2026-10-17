@@ -64,6 +64,22 @@
       bounce: 10,
     },
     hands_on_hips: { L: { s: 40, e: -75, h: 'fist' }, R: { s: 40, e: -75, h: 'fist' }, lean: 0 },
+    // right arm points down and out, body dips a little toward it
+    point_down: { L: IDLE_ARM, R: { s: 25, e: 0, h: 'point' }, tilt: 6, lift: -2 },
+    // both palms in front of the chest, arms angled in (drawArm keeps inward reach short, so palms stay apart)
+    clap: { L: { s: 205, e: 0, h: 'open' }, R: { s: 205, e: 0, h: 'open' } },
+    // right fist up, upper arm out and forearm bent up
+    thumbs_up: { L: IDLE_ARM, R: { s: 100, e: 60, h: 'fist' }, tilt: 4 },
+    // right palm to the face, head tilts toward the hand
+    facepalm: { L: IDLE_ARM, R: { s: 215, e: 0, h: 'open' }, tilt: 5, lean: -2 },
+    // arms hang forward, body lowers and leans, head tilts down
+    bow: { L: { s: 14, e: 0, h: 'open' }, R: { s: 14, e: 0, h: 'open' }, lean: 2, lift: -4, tilt: 6 },
+    // both fists tucked against the chest
+    arms_crossed: { L: { s: 280, e: 0, h: 'fist' }, R: { s: 280, e: 0, h: 'fist' }, tilt: -4 },
+    // both arms up and out, body lifts
+    stretch: { L: { s: 170, e: 0, h: 'open' }, R: { s: 170, e: 0, h: 'open' }, lift: 4 },
+    // fists low in front, head tilts away, body leans
+    shy: { L: { s: 325, e: 0, h: 'fist' }, R: { s: 325, e: 0, h: 'fist' }, tilt: 7, lean: -3 },
   };
 
   global.CharacterParts = {

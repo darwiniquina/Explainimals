@@ -1,5 +1,5 @@
 /*
- * shell.js - the frame of the Pixel Explainer Studio dashboard. Defines window.Dashboard.
+ * shell.js - the frame of the Explainimals Studio dashboard. Defines window.Dashboard.
  *
  *   Dashboard.register({ id, title, order, mount(ctx) })   // mount may return a cleanup function
  *   Dashboard.start()                                       // builds header, nav, main and footer; routes by hash
@@ -107,7 +107,7 @@
     els.status = el('span', { class: 'dash-status' });
     els.main = el('main', { class: 'dash-main' });
     els.header = el('header', { class: 'dash-header' },
-      el('div', { class: 'dash-brand', textContent: 'PIXEL EXPLAINER STUDIO' }),
+      el('div', { class: 'dash-brand', textContent: 'EXPLAINIMALS STUDIO' }),
       els.nav,
       el('label', { class: 'dash-picker' }, el('span', { textContent: 'Character' }), els.picker));
     els.footer = el('footer', { class: 'dash-footer' }, els.status);
@@ -188,7 +188,7 @@
     buildNav();
 
     if (!def) {
-      document.title = 'Not loaded | Pixel Explainer Studio';
+      document.title = 'Not loaded | Explainimals Studio';
       root.append(
         el('div', { class: 'px-msg warn', textContent: `Section "${id}" is not loaded or does not exist.` }),
         el('button', { class: 'px-btn', textContent: 'Back to home', onclick: () => Dashboard.navigate('home') }));
@@ -196,7 +196,7 @@
       return;
     }
 
-    document.title = `${def.title} | Pixel Explainer Studio`;
+    document.title = `${def.title} | Explainimals Studio`;
     const ctx = {
       root,
       query,

@@ -1,0 +1,14 @@
+{
+  "name": "explainimals",
+  "description": "Explainimals: pixel-art animated explainer presentations for Claude Code",
+  "owner": {
+    "name": "darwiniquina"
+  },
+  "plugins": [
+    {
+      "name": "explainimals",
+      "source": "./plugin",
+      "description": "Explainimals: talking pixel-art animals explain any topic as a self-contained animated HTML presentation, with camera moves, props and sound"
+    }
+  ]
+}

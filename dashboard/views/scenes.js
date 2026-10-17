@@ -20,6 +20,8 @@
   const CUSTOM = '__custom';   // disabled option for a music/sfx value that is not a plain name
   const JSON_DEBOUNCE_MS = 400;
   const CSS_ID = 'v-scenes-css';
+  const ZOOMS = [1, 2, 3];     // integer enlargement only: the art stays whole-pixel
+  const HEAD_AT = 0.33;        // the head sits about a third of the way down the 76-row grid
 
   const CSS = `
 .v-scenes .v-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -65,6 +67,11 @@
   const clone = (v) => JSON.parse(JSON.stringify(v));
   const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
   const orEmpty = (v) => (v == null ? '' : String(v));
+  // Character.actions when the rig provides it; empty (no action choices) when it does not
+  const actionNames = () => (window.Character && Array.isArray(window.Character.actions) ? window.Character.actions : []);
+  // the scene as the rig should see it: action is started with char.action() and zoom is the stage's, so both are left out
+  const rigSpec = (s) => { const o = Object.assign({}, s); delete o.action; delete o.zoom; return o; };
+  const zoomOf = (s) => (ZOOMS.includes(s.zoom) ? s.zoom : 1);
 
   // Only the surviving characters; anything else falls back to the first one that is loaded.
   function pickSkin(id) {
@@ -132,6 +139,7 @@
     let playTimer = 0;
     let jsonTimer = 0;
     let fps = DEFAULT_FPS;
+    let zoom = 1;                // stage zoom: the playing scene's, back to 1 when playback stops
     let rafId = 0;
     let acc = 0;
     let last = performance.now();
@@ -206,7 +214,7 @@
       ta,
       E('div', { className: 'v-foot' }, starterBtn, loadBtn, dlBtn, fileInp),
       errBox,
-      E('p', { className: 'px-muted', textContent: 'Other fields (look, eyes, brows, mouth) are kept in the JSON and not shown as row controls.' }));
+      E('p', { className: 'px-muted', textContent: 'Other fields (look, eyes, brows, mouth) are kept in the JSON and not shown as row controls. "action" (one of Character.actions) plays once when the scene starts; "zoom" 2 or 3 enlarges the character and centres it on the head.' }));
 
     ctx.root.append(E('div', { className: 'px-layout' }, left, E('div', { className: 'v-col' }, builder, jsonPanel)));
 
@@ -214,14 +222,30 @@
     const ro = new ResizeObserver(() => layoutChar());
     ro.observe(stage);
 
-    // whole-number scale so every pixel is the same size on screen
+    // whole-number scale so every pixel is the same size on screen; zoom multiplies that scale. At zoom 2 or 3
+    // the view is centred on the head (whole pixels, and the art still covers the stage vertically).
     function layoutChar() {
       if (!char) return;
       const vb = (char.svg.getAttribute('viewBox') || '0 0 61 76').split(/\s+/).map(Number);
       const g = char.skin.pixelGrid || { w: vb[2], h: vb[3] };
-      const k = Math.max(1, Math.floor(Math.min(stage.clientWidth / g.w, stage.clientHeight / g.h)));
-      char.svg.style.width = g.w * k + 'px';
-      char.svg.style.height = g.h * k + 'px';
+      const sw = stage.clientWidth;
+      const sh = stage.clientHeight;
+      const k = Math.max(1, Math.floor(Math.min(sw / g.w, sh / g.h))) * zoom;
+      const w = g.w * k;
+      const h = g.h * k;
+      let x = Math.round((sw - w) / 2);
+      let y = Math.round((sh - h) / 2);
+      if (zoom > 1 && h > sh) y = Math.min(0, Math.max(sh - h, Math.round(sh / 2 - Math.round(g.h * HEAD_AT) * k)));
+      char.svg.style.width = w + 'px';
+      char.svg.style.height = h + 'px';
+      char.svg.style.left = x + 'px';
+      char.svg.style.top = y + 'px';
+      char.svg.style.transform = 'none';
+    }
+
+    function setZoom(z) {
+      zoom = z;
+      layoutChar();
     }
 
     function buildChar() {
@@ -249,7 +273,12 @@
         if (s.narration !== undefined && typeof s.narration !== 'string') return `${n}: narration must be text.`;
         if (s.duration !== undefined && !(typeof s.duration === 'number' && s.duration > 0)) return `${n}: duration must be a positive number of seconds.`;
         if (s.look !== undefined && s.look !== null && !(isObj(s.look) && typeof s.look.x === 'number')) return `${n}: look must be {"x": -1..1, "y": -1..1} or null.`;
-        try { v.apply(s); } catch (e) { return `${n}: ${e.message}`; }
+        if (s.action !== undefined) {
+          const names = actionNames();
+          if (!names.includes(s.action)) return names.length ? `${n}: action must be one of ${names.join(', ')}.` : `${n}: action needs Character.actions, which is not loaded.`;
+        }
+        if (s.zoom !== undefined && !ZOOMS.includes(s.zoom)) return `${n}: zoom must be 1, 2 or 3.`;
+        try { v.apply(rigSpec(s)); } catch (e) { return `${n}: ${e.message}`; }
       }
       return '';
     }
@@ -364,6 +393,29 @@
         revalidate();
       });
 
+      const act = picker(actionNames(), s.action, '(none)', 'Action: played once when the scene starts');
+      act.addEventListener('change', () => {
+        if (act.value) model[i].action = act.value;
+        else delete model[i].action;
+        writeJson();
+        revalidate();
+      });
+
+      // 1, 2 or 3; a value that is not one of them is kept as a disabled "(invalid)" option
+      const zoomNow = s.zoom == null ? 1 : s.zoom;
+      const zoomSel = E('select', { className: 'px-select', title: 'Zoom: 2x and 3x enlarge the character and centre it on the head' });
+      ZOOMS.forEach((z) => zoomSel.append(E('option', { value: String(z), textContent: `${z}x` })));
+      if (!ZOOMS.includes(zoomNow)) zoomSel.append(E('option', { value: CUSTOM, textContent: `${String(zoomNow)} (invalid)`, disabled: true }));
+      zoomSel.value = ZOOMS.includes(zoomNow) ? String(zoomNow) : CUSTOM;
+      zoomSel.addEventListener('change', () => {
+        if (zoomSel.value === CUSTOM) return;
+        const z = Number(zoomSel.value);
+        if (z === 1) delete model[i].zoom;
+        else model[i].zoom = z;
+        writeJson();
+        revalidate();
+      });
+
       const dur = E('input', {
         type: 'number', min: '0', step: '0.1', className: 'px-input v-dur',
         placeholder: String(DEFAULT_SECONDS), title: 'Seconds on screen (default 3)',
@@ -414,6 +466,8 @@
         narr,
         expr,
         pose,
+        E('label', { className: 'v-inline' }, E('span', { className: 'px-muted', textContent: 'action' }), act),
+        E('label', { className: 'v-inline' }, E('span', { className: 'px-muted', textContent: 'zoom' }), zoomSel),
         E('label', { className: 'v-inline' }, dur, E('span', { className: 'px-muted', textContent: 'sec' })),
         E('label', { className: 'v-inline' }, talk, E('span', { textContent: 'talking' })),
         ...(audio ? [E('label', { className: 'v-inline' }, E('span', { textContent: 'sound' }), sfxSel)] : []),
@@ -442,6 +496,7 @@
       playIdx = -1;
       syncPlayBtn();
       markPlaying(-1);
+      setZoom(1);
       if (audio) audio.stopMusic();
       setStatus(reason ? `Stopped (${reason})` : 'Stopped');
     }
@@ -452,6 +507,7 @@
       playIdx = -1;
       syncPlayBtn();
       markPlaying(-1);
+      setZoom(1);
       if (audio) audio.stopMusic();
       setStatus(msg);
     }
@@ -485,11 +541,13 @@
       }
       const s = model[playIdx];
       try {
-        char.apply(s);
+        char.apply(rigSpec(s));
+        if (s.action && typeof char.action === 'function') char.action(s.action);
       } catch (e) {
         fail(`Scene ${playIdx + 1}: ${e.message}`);
         return;
       }
+      setZoom(zoomOf(s));
       if (audio && typeof s.sfx === 'string') audio.sfx(s.sfx);
       caption.textContent = orEmpty(s.narration);
       markPlaying(playIdx);
@@ -596,7 +654,7 @@
       validator = null;
       buildChar();
       if (playing && model[playIdx]) {
-        try { char.apply(model[playIdx], { snap: true }); } catch (e) { fail(`Scene ${playIdx + 1}: ${e.message}`); }
+        try { char.apply(rigSpec(model[playIdx]), { snap: true }); } catch (e) { fail(`Scene ${playIdx + 1}: ${e.message}`); }
       }
       revalidate();
     });
