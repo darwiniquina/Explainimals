@@ -50,6 +50,7 @@ function measure(Pres, scenario) {
 // Style checks from references/direction.md that the engine does not make. They only ever warn.
 const SAY_LIMIT = 110;
 const SFX_LIMIT = 4;
+const MUSIC_CHANGE_LIMIT = 4;
 const CAMERA_SHARE = 0.3;
 const MIN_SECONDS = 40;
 const MAX_SECONDS = 75;
@@ -65,6 +66,9 @@ function sfxCount(sfx) {
   return Array.isArray(sfx) ? sfx.length : 1;
 }
 
+// The mood a music value plays. "none" (or no music at all) is silence, shown as null.
+const loopOf = (value) => (typeof value === 'string' && value !== 'none' ? value : null);
+
 // Walks the slides as written (before dialogue expansion) so messages name the line the author wrote.
 function styleWarnings(scenario, seconds) {
   const warns = [];
@@ -72,6 +76,22 @@ function styleWarnings(scenario, seconds) {
   let sfx = 0;
   let moved = 0;
   let prevZoomed = false;
+  let loop = loopOf(scenario.music);   // the mood playing now, carried slide to slide as the engine does
+  let played = 0;                      // place in play order; each dialogue line is a slide of its own
+  let changes = 0;
+  let lastChange = null;               // { at, played } of the latest music change
+
+  // A value that differs from the mood playing is a change; setting the same mood again is not.
+  const cue = (at, value) => {
+    played += 1;
+    if (value === undefined || loopOf(value) === loop) return;
+    if (lastChange && lastChange.played === played - 1) {
+      warns.push([at, `music changes again right after ${lastChange.at}; give each mood a few slides`]);
+    }
+    loop = loopOf(value);
+    lastChange = { at, played };
+    changes += 1;
+  };
 
   slides.forEach((slide, i) => {
     if (!slide || typeof slide !== 'object') return;
@@ -84,6 +104,9 @@ function styleWarnings(scenario, seconds) {
 
     if (slide.dialogue && Array.isArray(slide.dialogue.lines)) {
       slide.dialogue.lines.forEach((line, j) => {
+        // the engine's rule: a line's own music applies from that line; the block's applies from its first line
+        const own = line && line.music !== undefined;
+        cue(own ? `${at}.dialogue.lines[${j}]` : at, own ? line.music : j === 0 ? slide.music : undefined);
         if (line && typeof line.say === 'string' && line.say.length > SAY_LIMIT) {
           warns.push([`${at}.dialogue.lines[${j}].say`, `${line.say.length} characters; keep it under ${SAY_LIMIT}`]);
         }
@@ -96,6 +119,7 @@ function styleWarnings(scenario, seconds) {
       return;
     }
 
+    cue(at, slide.music);
     (Array.isArray(slide.characters) ? slide.characters : []).forEach((c, j) => {
       if (c && typeof c.say === 'string' && c.say.length > SAY_LIMIT) {
         warns.push([`${at}.characters[${j}].say`, `${c.say.length} characters; keep it under ${SAY_LIMIT}`]);
@@ -106,6 +130,7 @@ function styleWarnings(scenario, seconds) {
   });
 
   if (sfx > SFX_LIMIT) warns.push(['(scenario)', `${sfx} sound effects; ${SFX_LIMIT} or fewer is enough`]);
+  if (changes > MUSIC_CHANGE_LIMIT) warns.push(['(scenario)', `${changes} music changes; ${MUSIC_CHANGE_LIMIT} or fewer keeps each one meaningful`]);
   if (slides.length && moved / slides.length > CAMERA_SHARE) {
     warns.push(['(scenario)', `${moved} of ${slides.length} slides move the camera; keep it to about ${Math.round(CAMERA_SHARE * 100)}%`]);
   }

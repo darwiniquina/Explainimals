@@ -31,7 +31,7 @@ Use for processes: a request, a build, a data trip.
 | 1 | Title | `title`, penguin `wave`, `sfx: appear` | none |
 | 2 | Starting point | one character, one prop (the input) | `point_right` at the prop |
 | 3-5 | Step 1, 2, 3 | one speaker per step, props in order with `arrow` between | one step can use `pan` along the props (see camera) |
-| 6 | Outcome | joy pose, `coin` or `confirm` | the result is the good news |
+| 6 | Outcome | joy pose, `coin` or `confirm`, `upbeat` music | the result is the good news |
 | 7 | Recap | panel of the 3 steps | the whole stage |
 | 8 | Close | `cheer`, `heart` or `sparkle` emote | none |
 
@@ -44,15 +44,17 @@ Use for debugging, risks, and "how to avoid X".
 
 | # | Slide | Setup | Moments |
 |---|---|---|---|
-| 1 | Title and hook | `title`, `sfx: appear` | none |
-| 2 | Problem | dog `sad` or `surprised`, `error` sfx, `tense` music | camera punch-in with `shake: true` (an error is the one allowed shake) |
+| 1 | Title and hook | `title`, `sfx: appear`, opening music `tense` | none |
+| 2 | Problem | dog `sad` or `surprised`, `error` sfx, music stays `tense` | camera punch-in with `shake: true` (an error is the one allowed shake) |
 | 3 | Cause | whisker `thinking`, `dots` emote | none |
-| 4 | Fix | penguin `determined`, `point_right` at a prop, `confirm` sfx | none |
+| 4 | Fix | penguin `determined`, `point_right` at a prop, `confirm` sfx, `upbeat` music | none |
 | 5 | Check | rabbit and penguin dialogue (2-4 lines) | camera on the speaker, zoom 2 |
-| 6 | Recap | panel of 3 habits, `upbeat` music | the whole stage |
+| 6 | Recap | panel of 3 habits, `calm` music | the whole stage |
 | 7 | Close | `cheer` or `thumbs_up`, `sparkle` | none |
 
 Reason: the problem slide is the only place where the view moves hard; a calm fix is easier to trust.
+
+Music in these shapes (see section 6): shape A usually keeps `calm` throughout. Shape B opens `calm` and moves to `upbeat` at the outcome. Shape C opens `tense` on the hook, moves to `upbeat` at the fix and to `calm` for the recap.
 
 ## 2. Cast
 
@@ -226,10 +228,13 @@ The pixel font draws printable ASCII only: letters, digits, space and
 
 ## 6. Sound
 
-- **One music mood** for the whole scenario, set at the top level: `calm` for gentle science, `upbeat` for how-to
-  and good news, `tense` for problems and risks, `playful` for light or kid-friendly topics. Change it per slide
-  only for a real change of mood (`none` stops the loop). Reason: a music change every few slides sounds like a
-  new scene each time.
+- **Music follows the story.** Set the top-level `music` to the opening mood, then change it at a story beat the
+  viewer feels, usually at a section break: a problem or risk goes to `tense`, the fix or good news to `upbeat`,
+  the quiet explanation or recap to `calm`, and a joke or kid-friendly aside to `playful`. A typical 6-9 slide
+  explainer has 2-3 changes and never more than 4; a short or simple one can keep one mood. Give each mood at
+  least 2 slides, so no two changes fall on consecutive slides. Do not switch just for variety: every change
+  needs a story reason. `none` stops the loop. Reason: a change with no beat behind it sounds like a new scene
+  each time.
 - **2-4 sound effects in total** per scenario, counting every `sfx`, and every item of a list (the validator
   warns above 4). Reason: more effects stop meaning anything. Spend them where they matter: `appear` on the
   title card, one on the key moment, one on the outcome. The shipped examples use more; follow this rule.
@@ -258,7 +263,7 @@ Check each item before running `validate.js`:
 - [ ] Props: 2-3 per slide (an `arrow` counts), in story order, and `at` values are `[x, y]` inside the 240 x 135 stage.
 - [ ] One emote per character per slide, and it matches the words.
 - [ ] Questions end with `?`.
-- [ ] 2-4 sound effects in total; one music mood, changed only for a real change.
+- [ ] 2-4 sound effects in total; 2-4 music changes at story beats (none for a short explainer), none on consecutive slides.
 - [ ] The first slide is a title; the last slide is a recap or a cheer.
 - [ ] The scenario totals 6-9 slides and about 45-60 s.
 - [ ] All on-screen text is plain ASCII (section 5c); no `validate.js` WARN about a character the font cannot draw is left.
