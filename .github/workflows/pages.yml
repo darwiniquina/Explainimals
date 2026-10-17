@@ -1,0 +1,61 @@
+name: Pages
+
+# Deploys the Explainimals demo gallery (scripts/build-site.js) to GitHub Pages on every push to main.
+# The build job runs the test suite first, so a broken demo never reaches the site. Built HTML is never
+# committed: the site is built here and uploaded as a Pages artifact.
+#
+# One-time repo setting: Settings > Pages > Build and deployment > Source must be "GitHub Actions".
+# Without it, the deploy job fails.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages needs write access to deploy; id-token is for the Pages deployment. Nothing else is written.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A run already in progress finishes; a newer run waits for it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Runs before the build, so a failing test stops the deployment.
+      - name: Run the tests
+        run: npm test
+
+      - name: Build the site
+        run: node scripts/build-site.js _site
+
+      - name: Upload the site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
