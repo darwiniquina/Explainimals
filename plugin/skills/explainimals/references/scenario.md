@@ -18,7 +18,7 @@ they say, and which props and backgrounds appear. An AI can write it from a topi
 | `defaults.background` | background used until a slide changes it (default: first registered) |
 | `defaults.skin` | character used when a slide does not name one: `penguin`, `frog`, `dog`, `whisker` (the cat), `rabbit`, `bear` (default `penguin`) |
 | `defaults.fps` | animation rate, default 12 |
-| `music` | optional background loop for the whole presentation: `calm`, `upbeat`, `tense`, `playful` (default: silent). See Sound below |
+| `music` | optional opening background loop: `calm`, `upbeat`, `tense`, `playful` (default: silent). Slides can switch it, see Sound below |
 
 ## Slide
 
@@ -244,8 +244,11 @@ Effect names: `blip`, `pop`, `jump`, `coin`, `confirm`, `error`, `whoosh`, `typi
 { "title": "How a website loads", "music": "calm",
   "slides": [
     { "id": "intro", "sfx": "appear", "title": { "text": "How a website loads" }, "characters": [ ... ] },
+    { "id": "request", "characters": [ ... ] },
     { "id": "dns-error", "music": "tense", "sfx": "error", "characters": [ ... ] },
-    { "id": "recap", "music": "upbeat", "sfx": "confirm", "characters": [ ... ] }
+    { "id": "dns-fix", "characters": [ ... ] },
+    { "id": "recap", "music": "upbeat", "sfx": "confirm", "characters": [ ... ] },
+    { "id": "close", "characters": [ ... ] }
   ] }
 ```
 
@@ -289,9 +292,10 @@ Authoring advice for speech:
 
 ### Sound guidance for authors (human or AI)
 
-- Pick ONE music mood for the whole scenario, the one that fits the content: `calm` for gentle science, `upbeat`
-  for how-to and good news, `tense` for problems and risks, `playful` for light or kid-friendly topics. Set it at
-  the top level, and add a per-slide `music` only for a real change of mood.
+- Music follows the story. Set the top-level `music` to the opening mood, then add a per-slide `music` at a story
+  beat: a problem goes to `tense`, the fix or good news to `upbeat`, the quiet recap to `calm`, a joke or kid-friendly
+  aside to `playful`. Switch only at a beat, never for variety: at most 4 changes, none on consecutive slides, and
+  each mood lasts at least 2 slides.
 - Use at most one `sfx` per slide, and do not put one on every slide. A few per scenario is enough.
 - `appear` for a title card (the first slide).
 - `pop` when a prop enters. Use `{ "id", "at" }` with the prop's `delay` to match them exactly.
