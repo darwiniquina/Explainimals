@@ -42,7 +42,7 @@ Run `node --version`. It must print 18 or higher.
      - If you are working from a local clone, pass its path with forward slashes, not backslashes. Example: `claude plugin marketplace add C:/path/to/Explainimals`. Backslashes are stripped in bash and the command fails with `Invalid marketplace source format`.
 
    Tell the user which path you chose and the exact commands, and wait for a yes before you run them.
-2. Run `claude plugin list` again. Expect `explainimals@explainimals`, enabled, with the version in `plugin/.claude-plugin/plugin.json` (0.2.0 at the time of writing). If it is not there, stop and report the output.
+2. Run `claude plugin list` again. Expect `explainimals@explainimals`, enabled, with the version in `plugin/.claude-plugin/plugin.json` (0.2.1 at the time of writing). If it is not there, stop and report the output.
 3. Tell the user to restart Claude Code. The skill loads at startup, so a session that is already running will not see it.
 
 ## B. Codex
