@@ -117,7 +117,13 @@ claude plugin marketplace update explainimals
 claude plugin update explainimals@explainimals
 ```
 
-For Codex, use the same Codex install prompt as above: the installer replaces the old folder after you confirm. For the Claude.ai chat and desktop app, upload the new zip (see [INSTALL.md](INSTALL.md)).
+For Codex, use this prompt. The installer itself refuses to overwrite an existing folder, so the agent replaces only the old `explainimals` folder after you confirm once:
+
+```text
+Update Explainimals from https://github.com/darwiniquina/Explainimals using https://raw.githubusercontent.com/darwiniquina/Explainimals/main/INSTALL.md. Ask me once before replacing the existing skill, then complete the update and verify it. Use Codex's normal approval flow if needed; if blocked, stop and tell me why.
+```
+
+If Codex asks for filesystem or network approval, approve it there; the agent continues without asking again. If your environment blocks the delete or install, the agent stops and reports the exact error. For the Claude.ai chat and desktop app, upload the new zip (see [INSTALL.md](INSTALL.md)).
 
 ## Use it
 
