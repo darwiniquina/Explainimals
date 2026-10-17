@@ -22,8 +22,10 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
 3. **Plan, then confirm.** Before you write any JSON, show the user a short plan (6 lines at most) and ask ONE
    question. The plan has: the one-sentence takeaway, the audience and tone, the cast with each animal's role, the
    slide beats in order (a few words each, usually 6-9), the music arc (for example "calm, then tense at the
-   problem, then upbeat"), and the expected length. Example question: "Build this,
-   or change anything first?" Then wait for the answer. Fold any change they ask for into the plan and go on; ask
+   problem, then upbeat"), the ending ("ends with the celebration fanfare" by default), and the expected length.
+   If the user asks for a different ending sound, or none, set `finale` to `"none"`, `"keep"` or a mood name
+   (see `references/scenario.md`, Sound) and say so in the plan. Never put `celebrate` on a slide yourself: the
+   engine adds it to the last slide. Example question: "Build this, or change anything first?" Then wait for the answer. Fold any change they ask for into the plan and go on; ask
    again only if they changed the topic or the whole direction. Skip the wait only when the user said to just
    build it or not to ask questions (still show the plan in your reply), or when no one can answer (a
    non-interactive run).
@@ -39,7 +41,8 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
    (a) a summary of what the explainer says: 3-5 short bullets in the order the viewer sees them, each the point
    of a slide or a dialogue part, in plain words about the topic (not about JSON fields); (b) one line of facts:
    slide count, length in seconds, cast, music arc
-   (for example calm, tense, upbeat); (c) the full path of the `.html`, with a reminder to open it
+   (for example calm, tense, upbeat, and the last slide plays the celebration or the `finale` that was set); (c) the
+   full path of the `.html`, with a reminder to open it
    in a browser and press **Play** (sound stays off until then); (d) ONE question: what should change? Offer a few
    concrete options, such as shorter or longer, a different cast or tone, more or fewer jokes, different music, no
    camera moves, or fixing a specific slide (they can say "slide 4"). Then wait. Do not rebuild until they answer.

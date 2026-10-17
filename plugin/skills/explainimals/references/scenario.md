@@ -18,7 +18,8 @@ they say, and which props and backgrounds appear. An AI can write it from a topi
 | `defaults.background` | background used until a slide changes it (default: first registered) |
 | `defaults.skin` | character used when a slide does not name one: `penguin`, `frog`, `dog`, `whisker` (the cat), `rabbit`, `bear` (default `penguin`) |
 | `defaults.fps` | animation rate, default 12 |
-| `music` | optional opening background loop: `calm`, `upbeat`, `tense`, `playful` (default: silent). Slides can switch it, see Sound below |
+| `music` | optional opening background loop: `calm`, `upbeat`, `tense`, `playful` or `celebrate` (default: silent). `celebrate` is for the last slide only. Slides can switch it, see Sound below |
+| `finale` | the sound on the last slide: omitted or `celebrate` (a fanfare, the default), a mood name, `keep` (the loop continues) or `none` (silence). See Sound below |
 
 ## Slide
 
@@ -230,10 +231,19 @@ its own cast. Two blocks in a row with different casts make a three or four char
 ## Sound (optional)
 
 Sound is optional. It is silent until the user presses Play, and it is generated in the browser with the Web
-Audio API (`presentation/audio.js`), so a scenario never needs audio files. Two fields control it:
+Audio API (`presentation/audio.js`), so a scenario never needs audio files. Three fields control it:
 
-- `music` (top level, or per slide): a background loop. Names: `calm`, `upbeat`, `tense`, `playful`. On a slide,
-  `"none"` stops the loop from that slide on, and a slide without `music` keeps the current loop.
+- `music` (top level, or per slide): a background loop. Names: `calm`, `upbeat`, `tense`, `playful`, `celebrate`.
+  `celebrate` is a short fanfare and is allowed only on the last slide. On a slide, `"none"` stops the loop from that
+  slide on, and a slide without `music` keeps the current loop.
+- `finale` (top level, optional): the sound on the last slide. Omitted or `"celebrate"` plays the fanfare; `"calm"`,
+  `"upbeat"`, `"tense"` or `"playful"` plays that mood; `"keep"` lets the current loop continue; `"none"` is silence.
+  The default applies only to a scenario with 2 or more slides, and only when the last slide has no `music` of its
+  own: an explicit `music` on the last slide always wins. The author does not need to write `celebrate`; the engine
+  adds it.
+- Validation for these: `"celebrate"` on any slide but the last, or at the top level of a scenario with 2 or more
+  slides, is an **error**. Any `finale` value other than the ones above is an **error**. A `finale` set while the last
+  slide has its own `music` is a **warning** (the slide wins). The automatic finale is not counted as a music change.
 - `sfx` (per slide): one effect. Three forms: a name (`"pop"`); a list (`["whoosh", "pop"]`, played in order
   0.4 s apart, the first at 0.15 s); or `{ "id": "coin", "at": 1.2 }` for an exact time in seconds after the
   slide starts.
@@ -296,6 +306,8 @@ Authoring advice for speech:
   beat: a problem goes to `tense`, the fix or good news to `upbeat`, the quiet recap to `calm`, a joke or kid-friendly
   aside to `playful`. Switch only at a beat, never for variety: at most 4 changes, none on consecutive slides, and
   each mood lasts at least 2 slides.
+- The last slide plays the celebration by default. Leave `finale` out unless the user asks for another ending or the
+  story ends on a serious note. The finale does not count toward the 2-4 music changes.
 - Use at most one `sfx` per slide, and do not put one on every slide. A few per scenario is enough.
 - `appear` for a title card (the first slide).
 - `pop` when a prop enters. Use `{ "id", "at" }` with the prop's `delay` to match them exactly.

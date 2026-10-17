@@ -235,6 +235,11 @@ The pixel font draws printable ASCII only: letters, digits, space and
   least 2 slides, so no two changes fall on consecutive slides. Do not switch just for variety: every change
   needs a story reason. `none` stops the loop. Reason: a change with no beat behind it sounds like a new scene
   each time.
+- **Celebrate on the last slide.** The last slide plays a short celebration fanfare (`celebrate`) by default. It is
+  automatic: do not write `celebrate` yourself, and the validator does not count it as a music change. It fits a
+  resolved or happy ending. For a story that ends on an open problem or a serious note, set the top-level `finale`
+  to `"keep"` (the loop continues), `"none"` (silence) or `calm`. The user can change it in plain words ("end
+  quietly", "no celebration sound"). Reason: the last sound is the one the viewer keeps, so it must match the ending.
 - **2-4 sound effects in total** per scenario, counting every `sfx`, and every item of a list (the validator
   warns above 4). Reason: more effects stop meaning anything. Spend them where they matter: `appear` on the
   title card, one on the key moment, one on the outcome. The shipped examples use more; follow this rule.
@@ -264,6 +269,7 @@ Check each item before running `validate.js`:
 - [ ] One emote per character per slide, and it matches the words.
 - [ ] Questions end with `?`.
 - [ ] 2-4 sound effects in total; 2-4 music changes at story beats (none for a short explainer), none on consecutive slides.
+- [ ] No `music: "celebrate"` written by hand; an open or serious ending sets `finale` to `"keep"`, `"none"` or a mood.
 - [ ] The first slide is a title; the last slide is a recap or a cheer.
 - [ ] The scenario totals 6-9 slides and about 45-60 s.
 - [ ] All on-screen text is plain ASCII (section 5c); no `validate.js` WARN about a character the font cannot draw is left.

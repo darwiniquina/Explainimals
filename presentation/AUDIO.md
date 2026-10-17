@@ -12,7 +12,7 @@ and before `engine.js`). It must work from `file://`.
 ```js
 Pres.audio.supported            // true when the browser has AudioContext; if false every call below is a no-op
 Pres.audio.sfxNames             // ['blip','pop','jump','coin','confirm','error','whoosh','typing','talk','appear']
-Pres.audio.musicNames           // ['calm','upbeat','tense','playful']
+Pres.audio.musicNames           // ['calm','upbeat','tense','playful','celebrate']
 Pres.audio.catalog()            // { sfx: [{id,label}], music: [{id,label,bpm}] }
 Pres.audio.unlock()             // create/resume the AudioContext; call from a click or key handler (autoplay policy)
 Pres.audio.sfx(name)            // play one effect now. Unknown name or muted = silent no-op, never throws
@@ -51,6 +51,11 @@ Pres.audio.onChange(fn)         // fn() called when volume, mute or the playing 
 ```
 
 - A slide without `music` keeps whatever loop is already playing (inherits).
+- `celebrate`: a short major fanfare loop, about 140-150 bpm, for the last slide only. Elsewhere, or at the top level
+  of a scenario with 2 or more slides, it is an **error**.
+- `finale` (top level): the sound on the last slide. Omitted or `"celebrate"` = the fanfare (the default, for 2 or more
+  slides when the last slide has no `music`); a mood name = that mood; `"keep"` = the loop continues; `"none"` =
+  silence. Any other value is an **error**; `finale` with a `music` on the last slide is a **warning** (the slide wins).
 - `sfx` entries may mix strings and `{id, at}` objects.
 - Validation (in `Pres.validate`): unknown music/sfx name is an **error** listing the valid names;
   `at` must be a number >= 0 (error otherwise); `at` >= the slide's duration is a **warning**;
