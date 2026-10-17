@@ -42,7 +42,7 @@ Run `node --version`. It must print 18 or higher.
      - If you are working from a local clone, pass its path with forward slashes, not backslashes. Example: `claude plugin marketplace add C:/path/to/Explainimals`. Backslashes are stripped in bash and the command fails with `Invalid marketplace source format`.
 
    Tell the user which path you chose and the exact commands, and wait for a yes before you run them.
-2. Run `claude plugin list` again. Expect `explainimals@explainimals`, enabled, with the version in `plugin/.claude-plugin/plugin.json` (0.2.5 at the time of writing). If it is not there, stop and report the output.
+2. Run `claude plugin list` again. Expect `explainimals@explainimals`, enabled, with the version in `plugin/.claude-plugin/plugin.json` (0.2.6 at the time of writing). If it is not there, stop and report the output.
 3. Tell the user to restart Claude Code. The skill loads at startup, so a session that is already running will not see it.
 
 ## B. Codex
@@ -55,7 +55,7 @@ Codex ships a built-in `skill-installer` skill. It downloads this repo's archive
    - bash: `python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
    - If `python` is not found, try `python3` or `py`. For one project only, add `--dest <project>/.agents/skills`.
 3. If the `explainimals` folder already exists at the destination, the installer aborts. Tell the user and ask once. On a yes, delete only that old `explainimals` folder, then run step 2 again.
-4. Verify that `<dest>/explainimals/SKILL.md` exists directly inside it, and that the folder holds 34 files. If not, stop and report.
+4. Verify that `<dest>/explainimals/SKILL.md` exists directly inside it, and that the folder holds 36 files. If not, stop and report.
 5. Tell the user to restart Codex, run `/skills` and check that `explainimals` is listed, then try `$explainimals make an explainer about DNS`. If it is not listed after a restart, stop and report. Offer to read the OpenAI Codex skills docs (https://developers.openai.com/codex/skills), and do not guess other folders.
 6. Fallback. If the command is blocked by a sandbox policy, rejected, or fails (network error, Python missing): STOP. Do not try other ways around the block, and do not leave temp files. Tell the user what was blocked (the exact message), then give them exactly ONE of these lines to paste into their own terminal, chosen for their shell, and say that it installs into `~/.codex/skills/explainimals` and that they must restart Codex afterwards (if an `explainimals` folder is already there, delete it first):
    - PowerShell: `python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
@@ -126,7 +126,23 @@ Ask the user before you delete anything.
 
 ## What this installs
 
-- Only the `plugin/` folder of the repo: about 35 files, about 400 KB (the 34-file skill folder; for Codex it lands in `~/.codex/skills/explainimals`). That is the skill (`SKILL.md`, `references/`, `runtime/`, `scripts/`, `assets/`) and, for Claude Code, its plugin manifest.
+- Only the `plugin/` folder of the repo: about 37 files, about 400 KB (the 36-file skill folder; for Codex it lands in `~/.codex/skills/explainimals`). That is the skill (`SKILL.md`, `references/`, `runtime/`, `scripts/`, `assets/`) and, for Claude Code, its plugin manifest.
 - Not installed: the studio, the dashboard and the source art.
 - Nothing runs in the background. The skill runs only when the user asks for an explainer.
 - No network calls. The skill's scripts and the pages it builds send nothing anywhere.
+
+## Optional: MP4 export
+
+Only when the user asks for a video file. The skill can export a finished explainer as an MP4 with sound, made by
+`plugin/skills/explainimals/scripts/export_mp4.py`. The options and troubleshooting are in
+`plugin/skills/explainimals/references/mp4.md`.
+
+It needs Python 3.8 or newer, Google Chrome or Microsoft Edge (or `python -m playwright install chromium` when neither
+is installed), and ffmpeg (on PATH, or from the `imageio-ffmpeg` package). If `python` is not found, try `python3` or
+`py -3`. Skip this section when the user does not want a video; the skill works without it.
+
+1. Check what is missing: `python <installed skill folder>/scripts/export_mp4.py --check`. It exits 0 when everything
+   is ready and 2 when not. Run it only when the user asks for a video.
+2. If something is missing, tell the user the exact install command and ask once. Install only after a yes:
+   `pip install playwright imageio-ffmpeg`
+3. Once it reports ready, the skill can export the video when the user asks. No other step is needed.
