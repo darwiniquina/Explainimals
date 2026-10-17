@@ -11,22 +11,36 @@ render filters). Plain HTML/JS, no build step, no runtime dependencies.
 
 ## Install with your AI
 
-The quickest way is to give this prompt to your AI agent. It reads the install guide in this repo and does the steps for you.
+The quickest way is to give one prompt to your AI agent. It reads the install guide in this repo and does the steps for you.
+
+For Claude Code, or any other agent that can run commands:
 
 ```text
-Install the Explainimals skill from https://github.com/darwiniquina/Explainimals. Read INSTALL.md in that repo and follow it.
+Install the Explainimals skill from https://github.com/darwiniquina/Explainimals by following https://raw.githubusercontent.com/darwiniquina/Explainimals/main/INSTALL.md
+```
+
+For Codex, which has a built-in `skill-installer` skill:
+
+```text
+Use $skill-installer to install https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals
+```
+
+If Codex says its sandbox blocked the install, run this one line yourself in your own terminal instead (PowerShell;
+bash and the other options are under "Codex" below), then restart Codex:
+
+```powershell
+python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals
 ```
 
 - Works in Claude Code and Codex, which are agents that can run commands.
 - In the Claude.ai or desktop chat, which cannot run commands, use the zip steps under "Claude.ai and the Claude desktop app" below.
-- Your AI tells you what it is going to do and asks before it changes anything.
+- Your AI shows the whole plan and asks you once, with one confirmation, before it changes anything.
+- If Codex's sandbox blocks the install, your AI gives you one line to paste into your own terminal.
 - Prefer to do it yourself? The manual steps follow.
-
-This needs the repo pushed to GitHub and public (or at least readable by your AI).
 
 ## Install the skill
 
-Installing from this repo only copies the `plugin/` folder (the skill, 35 files, about 400 KB). The studio, the
+Installing from this repo only copies the `plugin/` folder (35 files, about 400 KB; the skill folder inside it is 34 files). The studio, the
 dashboard and the source art stay behind.
 
 ### Claude Code
@@ -57,13 +71,12 @@ claude plugin marketplace update explainimals
 claude plugin update explainimals@explainimals
 ```
 
-Check what is installed with `claude plugin list`. The GitHub form needs the repo to be pushed and reachable by your
-git credentials; the local-folder form was tested end to end.
+Check what is installed with `claude plugin list`. The local-folder form was tested end to end; the GitHub form reads
+the `main` branch of this public repo.
 
 ### Claude.ai and the Claude desktop app
 
-Zip the skill folder so `SKILL.md` sits inside a folder named `explainimals`. On Windows use the built-in `tar.exe`
-from the repo root:
+Zip the skill folder so `SKILL.md` sits inside a folder named `explainimals`. On Windows use the built-in `tar.exe`:
 
 ```powershell
 cd plugin\skills
@@ -81,8 +94,22 @@ menu wording was not verified and may differ.
 
 ### Codex
 
-Copy `plugin/skills/explainimals` to `~/.agents/skills/explainimals` (all projects) or
-`<your-project>/.agents/skills/explainimals` (one project). From the repo root, on Windows:
+The built-in `skill-installer` skill installs the skill into `~/.codex/skills/explainimals` (or `$CODEX_HOME/skills/explainimals` if you set `CODEX_HOME`) for all projects, with one terminal command. It downloads this repo's archive to a temporary folder and installs only the skill folder, falling back to a git sparse checkout if the download fails. On Windows:
+
+```powershell
+python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals
+```
+
+On macOS or Linux:
+
+```bash
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals
+```
+
+If `python` is not found, use `python3` or `py`. For one project only, add `--dest <your-project>/.agents/skills`. The installer stops if an `explainimals` folder is already there, so delete the old one first.
+
+If that does not work, copy the skill by hand from a clone of this repo: `plugin/skills/explainimals` goes to
+`~/.agents/skills/explainimals` (all projects) or `<your-project>/.agents/skills/explainimals` (one project). From the repo root, on Windows:
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\.agents\skills"; Copy-Item -Recurse -Force plugin\skills\explainimals "$HOME\.agents\skills\"
@@ -94,9 +121,9 @@ On macOS or Linux:
 mkdir -p ~/.agents/skills && cp -r plugin/skills/explainimals ~/.agents/skills/
 ```
 
-Codex reads skills from `$CWD/.agents/skills` (up to the repo root) and from `$HOME/.agents/skills`. If `explainimals`
-does not appear, restart Codex; list skills with `/skills`. Check the current Codex docs if these locations have
-moved (the paths come from OpenAI's Codex skills docs).
+Codex looks for skills in `~/.codex/skills` (where the installer puts it), `~/.agents/skills`, and
+`<your-project>/.agents/skills`. Restart Codex, then list skills with `/skills` and run `$explainimals`. Check the
+current Codex docs if these locations have moved (the paths come from OpenAI's Codex skills docs).
 
 Any other agent that reads `SKILL.md` folders can use the `explainimals` folder as it is. The skill needs Node.js 18
 or newer (it runs a validator and a build script); playing the finished `.html` needs only a browser.
@@ -306,4 +333,4 @@ art rule that allows integer zoom only is in `presentation/CONTRACT.md`.
   character actions are already driven by time, so they should render the same way.
 - Check the new camera moves and emotes in `presentation/assets-preview.html` before using them in a long scenario.
 - Done: the scenario authoring guide, including the camera and motion advice, is packaged as the Explainimals skill in `plugin/` (see "Install the skill").
-- Next for the skill: more props (moon, bed, clock, battery, food), a video export, and publishing the repo so the GitHub install form works.
+- Next for the skill: more props (moon, bed, clock, battery, food), a video export, and a license.
