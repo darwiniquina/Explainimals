@@ -1,5 +1,5 @@
 /*
- * props.js - the prop icon library: 22 retro pixel icons (16..40 px) in an 8/16-bit console style,
+ * props.js - the prop icon library: 42 retro pixel icons (16..40 px) in an 8/16-bit console style,
  * like inventory items from an NES / SNES / Game Boy Advance game. Hard edges, no anti-aliasing,
  * a 1 px near-black outline, 3-tone bevels with the light from the top-left, and a small palette of
  * steel, grey, brick red, burnt orange, mustard, green, teal and cream. Animated props step in whole
@@ -517,6 +517,385 @@
       buf.rect(5, 16, 12, 1, T.grey.mid);                           // output lines
       buf.rect(5, 19, 18, 1, T.grey.mid);
       buf.rect(5, 21, 8, 1, T.grey.mid);
+    },
+  });
+
+// ------------------------------------------------------------------ coin (static, new)
+  // A gold coin with a raised rim, an inner stamp ring and a dark dollar mark.
+  Pres.registerProp('coin', {
+    label: 'Coin', w: 24, h: 24,
+    draw(buf) {
+      const DOLLAR = ['..#..', '.####', '#.#..', '.###.', '..#.#', '####.', '..#..'];
+      solid(buf, T.mustard, (b) => b.ellipse(11.5, 11.5, 11, 11, 'x'));   // coin disc
+      buf.ellipse(11.5, 11.5, 8, 8, T.mustard.lo);                        // stamp ring
+      buf.ellipse(11.5, 11.5, 7, 7, T.mustard.mid);
+      glyph(buf, DOLLAR, T.orange.lo, 9, 8);
+    },
+  });
+
+  // ------------------------------------------------------------------ building (static, new)
+  // A cream office block with a steel cornice, a grid of teal windows and a red door.
+  Pres.registerProp('building', {
+    label: 'Building', w: 30, h: 36,
+    draw(buf) {
+      solid(buf, T.cream, (b) => b.rect(3, 5, 24, 30, 'x'));              // tower body
+      flat(buf, shape(buf, (b) => b.rect(1, 1, 28, 4, 'x')), T.steel.mid); // roof cornice
+      for (const y of [8, 14, 20]) for (const x of [7, 13, 19]) {         // window grid
+        buf.rect(x, y, 4, 4, T.teal.mid);
+        buf.rect(x, y, 4, 1, T.teal.hi);
+      }
+      flat(buf, shape(buf, (b) => b.rect(12, 27, 6, 8, 'x')), T.red.mid); // door
+      buf.set(16, 31, OL);                                                // door handle
+    },
+  });
+
+  // ------------------------------------------------------------------ document (static, new)
+  // A cream sheet with a folded top-right corner, a red heading bar and grey text lines.
+  Pres.registerProp('document', {
+    label: 'Document', w: 24, h: 30,
+    draw(buf) {
+      solid(buf, T.cream, (b) => poly(b, [[1, 1], [17, 1], [23, 7], [23, 29], [1, 29]], 'x'));   // sheet
+      flat(buf, shape(buf, (b) => poly(b, [[17, 1], [17, 7], [23, 7]], 'x')), T.grey.mid);      // folded corner
+      buf.rect(4, 9, 12, 2, T.red.mid);                                   // heading bar
+      [[13, 15], [16, 15], [19, 12], [22, 15], [25, 8]].forEach(([y, w]) => buf.rect(4, y, w, 1, T.grey.mid));
+    },
+  });
+
+  // ------------------------------------------------------------------ bin (static, new)
+  // A plain green waste bin: a slightly wider grey lid with a handle, and three vertical ribs down the body.
+  Pres.registerProp('bin', {
+    label: 'Bin', w: 24, h: 30,
+    draw(buf) {
+      solid(buf, T.green, (b) => b.rect(3, 9, 18, 20, 'x'));              // body
+      for (const x of [7, 11, 15]) buf.rect(x, 12, 1, 15, T.green.lo);   // vertical ribs
+      solid(buf, T.grey, (b) => b.rect(1, 5, 22, 4, 'x'));                // lid
+      solid(buf, T.grey, (b) => b.rect(9, 1, 6, 3, 'x'));                 // handle
+    },
+  });
+
+  // ------------------------------------------------------------------ calendar (static, new)
+  // A white page with a red header strip, two steel binder rings, a grid of days and one red day.
+  Pres.registerProp('calendar', {
+    label: 'Calendar', w: 28, h: 28,
+    draw(buf) {
+      solid(buf, T.white, (b) => b.rect(1, 4, 26, 23, 'x'));              // page
+      buf.rect(1, 4, 26, 6, T.red.mid);                                   // header strip
+      solid(buf, T.steel, (b) => b.rect(7, 1, 3, 5, 'x'));                // binder ring left
+      solid(buf, T.steel, (b) => b.rect(18, 1, 3, 5, 'x'));               // binder ring right
+      const COLS = [3, 9, 15, 21], ROWS = [11, 16, 21];
+      ROWS.forEach((y, r) => COLS.forEach((x, c) => {
+        buf.rect(x, y, 4, 4, r === 1 && c === 2 ? T.red.mid : T.grey.mid);   // day cells, one highlighted
+      }));
+    },
+  });
+
+// ------------------------------------------------------------------ clock (animated second hand, new)
+  // A round wall clock: grey case, cream face with hour marks, hands at 10:10, a red second hand ticking once a second.
+  Pres.registerProp('clock', {
+    label: 'Clock', w: 28, h: 28, animated: true,
+    draw(buf, t) {
+      const cx = 13.5, cy = 13.5, ex = cx + 0.5, ey = cy + 0.5;    // ex, ey: same centre in poly() space
+      solid(buf, T.grey, (b) => b.ellipse(cx, cy, 13, 13, 'x'));   // case
+      buf.ellipse(cx, cy, 10.5, 10.5, T.grey.lo);                  // inner bezel ring
+      buf.ellipse(cx, cy, 9.5, 9.5, T.cream.mid);                  // face
+      for (let k = 0; k < 12; k++) {                               // 12 hour marks, quarters are bigger
+        const a = (k * Math.PI) / 6, r = 7.5;
+        const x = Math.round(cx + r * Math.sin(a)), y = Math.round(cy - r * Math.cos(a));
+        if (k % 3 === 0) buf.rect(x - 1, y - 1, 2, 2, OL);
+        else buf.set(x, y, OL);
+      }
+      const hand = (L, deg, c) => {                                // 2 px tapered hand from the centre
+        const a = (deg * Math.PI) / 180, ux = Math.sin(a), uy = -Math.cos(a), nx = -uy, ny = ux;
+        poly(buf, [[ex + nx, ey + ny], [ex + L * ux + nx * 0.5, ey + L * uy + ny * 0.5],
+          [ex + L * ux - nx * 0.5, ey + L * uy - ny * 0.5], [ex - nx, ey - ny]], c);
+      };
+      hand(5.5, 305, OL);                                          // hour hand, pointing at 10
+      hand(8, 60, OL);                                             // minute hand, pointing at 2
+      const sa = ((Math.floor(t) % 60) * Math.PI) / 30;            // second hand steps once a second
+      buf.line(cx - 3 * Math.sin(sa), cy + 3 * Math.cos(sa), cx + 9 * Math.sin(sa), cy - 9 * Math.cos(sa), T.red.mid);
+      buf.rect(13, 13, 2, 2, T.red.mid);                           // centre pin
+    },
+  });
+
+  // ------------------------------------------------------------------ book (static, new)
+  // A closed green hardcover: dark spine, cream page edges on the right and bottom, mustard label, red bookmark ribbon.
+  Pres.registerProp('book', {
+    label: 'Book', w: 28, h: 24,
+    draw(buf) {
+      shape(buf, (b) => b.rect(1, 1, 26, 22, 'x'));                // outline of the whole book
+      buf.rect(1, 1, 3, 22, T.green.lo);                           // spine
+      buf.rect(4, 1, 1, 22, OL);                                   // spine crease
+      buf.rect(5, 1, 19, 19, T.green.mid);                         // cover
+      buf.rect(5, 1, 19, 1, T.green.hi);                           // top edge catches the light
+      buf.rect(5, 19, 19, 1, T.green.lo);                          // bottom edge in shade
+      buf.rect(23, 1, 1, 19, T.green.lo);                          // right edge of the cover
+      buf.rect(24, 1, 2, 22, T.cream.mid);                         // page edges, right
+      buf.rect(26, 1, 1, 22, T.cream.lo);
+      buf.rect(4, 20, 20, 2, T.cream.mid);                         // page edges, bottom
+      buf.rect(4, 22, 23, 1, T.cream.lo);
+      flat(buf, shape(buf, (b) => b.rect(7, 5, 11, 7, 'x')), T.mustard.mid);   // title label with dark frame
+      buf.rect(9, 7, 7, 1, OL);
+      buf.rect(9, 9, 4, 1, OL);
+      buf.rect(20, 1, 2, 10, T.red.mid);                           // bookmark ribbon
+    },
+  });
+
+  // ------------------------------------------------------------------ key (static, new)
+  // A gold key: round bow with a dark hole, a shaft and two teeth at the business end.
+  Pres.registerProp('key', {
+    label: 'Key', w: 30, h: 18,
+    draw(buf) {
+      solid(buf, T.mustard, (b) => {
+        b.ellipse(8.5, 8.5, 7.5, 7.5, 'x');                        // round bow
+        b.rect(15, 7, 14, 4, 'x');                                 // shaft
+        b.rect(22, 11, 2, 4, 'x');                                 // long tooth
+        b.rect(26, 11, 2, 3, 'x');                                 // short tooth
+      });
+      buf.ellipse(8.5, 8.5, 3, 3, OL);                             // hole in the bow
+      buf.set(4, 4, T.cream.hi).set(5, 4, T.cream.hi).set(4, 5, T.cream.hi);   // gloss
+    },
+  });
+
+  // ------------------------------------------------------------------ trophy (static, new)
+  // A gold cup with two loop handles, a stem and a two-step base with a silver plate; a red star on the cup.
+  Pres.registerProp('trophy', {
+    label: 'Trophy', w: 26, h: 30,
+    draw(buf) {
+      solid(buf, T.mustard, (b) => {
+        b.rect(1, 2, 6, 10, 'x');                                  // handles (holes erased below)
+        b.rect(19, 2, 6, 10, 'x');
+        b.rect(6, 1, 14, 10, 'x');                                 // cup
+        b.rect(7, 11, 12, 3, 'x');                                 // taper
+        b.rect(9, 14, 8, 2, 'x');                                  // neck
+        b.rect(11, 16, 4, 4, 'x');                                 // stem
+        b.rect(7, 20, 12, 2, 'x');                                 // collar
+        for (let y = 4; y <= 9; y++) { b.erase(3, y); b.erase(4, y); b.erase(21, y); b.erase(22, y); }
+        [[1, 2], [1, 11], [24, 2], [24, 11]].forEach(([x, y]) => b.erase(x, y));   // rounded handle corners
+      });
+      poly(buf, starPts(13, 6, 3.8, 1.6), T.red.mid);              // star on the cup
+      flat(buf, shape(buf, (b) => b.rect(5, 22, 16, 4, 'x')), T.grey.mid);        // silver plate
+      buf.rect(8, 23, 10, 2, T.cream.hi);                          // engraved label
+      flat(buf, shape(buf, (b) => b.rect(4, 26, 18, 3, 'x')), T.red.mid);         // base
+    },
+  });
+
+  // ------------------------------------------------------------------ phone (static, new)
+  // A portrait smartphone: dark rounded bezel, bright teal screen with app tiles and a chat bubble, home bar.
+  Pres.registerProp('phone', {
+    label: 'Phone', w: 18, h: 32,
+    draw(buf) {
+      const bez = { hi: '#4a5566', mid: '#2a3340', lo: '#2a3340' };   // dark bezel, lit on the top-left only
+      solid(buf, bez, (b) => b.rrect(1, 1, 16, 30, 2, 'x'));
+      buf.rect(3, 4, 12, 23, T.teal.hi);                           // bright screen
+      buf.rect(7, 2, 4, 1, OL);                                    // speaker slot
+      [[4, 8, T.mustard], [10, 8, T.red], [4, 14, T.green]].forEach(([x, y, c]) => buf.rect(x, y, 4, 4, c.mid));   // app tiles
+      buf.rect(4, 20, 10, 4, T.cream.mid);                         // chat bubble
+      [6, 8, 10].forEach((x) => buf.set(x, 22, OL));
+      buf.rect(6, 28, 6, 1, bez.hi);                               // home bar
+    },
+  });
+
+// ------------------------------------------------------------------ sun (animated ray flicker, new)
+  Pres.registerProp('sun', {
+    label: 'Sun', w: 30, h: 30, animated: true,
+    draw(buf, t) {
+      const f = Math.floor(t * 2) % 2;                              // which rays are long this step
+      const TOOTH = Math.PI / 4;
+      const rays = new Buf(), disc = new Buf();
+      for (let y = 0; y < 30; y++) for (let x = 0; x < 30; x++) {
+        const dx = x - 14.5, dy = y - 14.5, r = Math.hypot(dx, dy);
+        if (r <= 8) { disc.set(x, y, '#ffffff'); rays.set(x, y, '#ffffff'); continue; }
+        const a = Math.atan2(dy, dx), n = Math.round(a / TOOTH);     // n = nearest ray
+        const d = Math.abs(a - n * TOOTH);                           // angle from that ray's axis
+        const long = ((((n % 2) + 2) % 2) + f) % 2 === 0;
+        if (r > (long ? 13 : 12)) continue;
+        if (Math.cos(d) > 0 && r * Math.sin(d) <= 2.6 - (r - 8) * 0.18) rays.set(x, y, '#ffffff');
+      }
+      const o = rays.clone();
+      o.outline(OL);
+      buf.blit(o);
+      bevel(buf, rays, T.orange);
+      bevel(buf, disc, T.mustard);
+      buf.set(9, 11, T.cream.hi).set(10, 10, T.cream.hi).set(11, 9, T.cream.hi);   // gloss
+    },
+  });
+
+  // ------------------------------------------------------------------ moon (static, new)
+  Pres.registerProp('moon', {
+    label: 'Moon', w: 24, h: 28,
+    draw(buf) {
+      solid(buf, T.cream, (b) => {
+        for (let y = 0; y < 28; y++) for (let x = 0; x < 24; x++) {
+          const inMoon = ((x - 11.5) / 11) ** 2 + ((y - 13.5) / 12.5) ** 2 <= 1;
+          const inBite = (x - 16.5) ** 2 + (y - 9.5) ** 2 <= 10.5 ** 2;
+          if (inMoon && !inBite) b.set(x, y, '#ffffff');
+        }
+      });
+      buf.rect(4, 15, 3, 3, T.cream.lo);                            // craters
+      buf.rect(9, 21, 2, 2, T.cream.lo);
+      solid(buf, T.mustard, (b) => poly(b, starPts(18.5, 4.5, 3.8, 1.7), 'x'));   // tiny star in the bite
+    },
+  });
+
+  // ------------------------------------------------------------------ tree (static, new)
+  Pres.registerProp('tree', {
+    label: 'Tree', w: 28, h: 36,
+    draw(buf) {
+      const bark = { hi: '#c98f55', mid: '#8b5a2b', lo: '#5a3818' };       // local brown tones
+      solid(buf, bark, (b) => b.rect(10, 20, 8, 14, 'x'));                 // trunk, under the crown
+      solid(buf, T.green, (b) => {
+        b.ellipse(13.5, 9, 9, 8.5, 'x');                                   // top lobe
+        b.ellipse(7, 14.5, 6.5, 6.5, 'x');                                 // left lobe
+        b.ellipse(20, 14.5, 6.5, 6.5, 'x');                                // right lobe
+        b.rect(7, 12, 14, 9, 'x');                                         // fill between lobes
+      });
+      buf.rect(9, 5, 3, 1, T.green.hi).rect(5, 12, 2, 2, T.green.hi);    // leaf glints
+      buf.rect(15, 13, 4, 2, T.green.lo).rect(9, 17, 3, 2, T.green.lo).rect(21, 10, 2, 3, T.green.lo);   // dark clumps
+    },
+  });
+
+  // ------------------------------------------------------------------ water drop (static, new)
+  Pres.registerProp('drop', {
+    label: 'Water drop', w: 18, h: 26,
+    draw(buf) {
+      solid(buf, T.teal, (b) => {
+        b.ellipse(8.5, 16, 8, 8, 'x');                                     // round belly
+        poly(b, [[9, 1.5], [16, 14], [2, 14]], 'x');                       // tapering top
+      });
+      buf.set(5, 11, T.white.hi).set(4, 12, T.white.hi).set(4, 13, T.white.hi);   // glint
+    },
+  });
+
+  // ------------------------------------------------------------------ flame (animated flicker, new)
+  Pres.registerProp('flame', {
+    label: 'Flame', w: 22, h: 30, animated: true,
+    draw(buf, t) {
+      const k = Math.floor(t * 6) % 3;                                // three flicker frames
+      const tipX = [10.5, 11.5, 9.5][k], tipY = [1.2, 1.8, 1.5][k];   // main tongue lean and height
+      const leftY = [11, 10, 12][k];                                  // left flick tip
+      const inPoly = (pts, px, py) => {                               // even-odd test at one point
+        let c = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+          const [xi, yi] = pts[i], [xj, yj] = pts[j];
+          if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
+        }
+        return c;
+      };
+      const flame = (x, y, s) => {                                    // the flame shrunk by s toward its base
+        const u = 10.5 + (x - 10.5) / s, v = 27 + (y - 27) / s;
+        return (u - 10.5) ** 2 + (v - 18.5) ** 2 <= 81
+          || inPoly([[tipX, tipY], [17.5, 21], [3.5, 21]], u, v)
+          || inPoly([[4, leftY], [11, 22], [1.5, 22]], u, v)
+          || inPoly([[17.5, 13], [19, 22], [12, 22]], u, v);
+      };
+      const sil = shape(buf, (b) => {
+        for (let y = 0; y < 30; y++) for (let x = 0; x < 22; x++) if (flame(x, y, 1)) b.set(x, y, '#ffffff');
+      });
+      bevel(buf, sil, T.red);
+      const mid = new Buf(), core = new Buf();
+      for (let y = 0; y < 30; y++) for (let x = 0; x < 22; x++) {
+        if (sil.has(x, y) && flame(x, y, 0.62)) mid.set(x, y, '#ffffff');
+        if (mid.has(x, y) && flame(x, y, 0.32)) core.set(x, y, '#ffffff');
+      }
+      bevel(buf, mid, T.orange);
+      flat(buf, core, T.mustard.hi);
+    },
+  });
+
+// ------------------------------------------------------------------ brain (static, new)
+  // A pink side-view brain: a round cerebrum with folds, a cerebellum at the back and a short stem.
+  Pres.registerProp('brain', {
+    label: 'Brain', w: 30, h: 26,
+    draw(buf) {
+      const pink = { hi: '#ffb8dc', mid: '#ec6fae', lo: '#a62c6e' };
+      const sil = shape(buf, (b) => {
+        b.ellipse(14.5, 11, 12.5, 9, 'x');                          // cerebrum
+        b.ellipse(21.5, 17.5, 5, 3.5, 'x');                         // cerebellum
+        b.rect(9, 17, 4, 8, 'x');                                   // brain stem
+      });
+      bevel(buf, sil, pink);
+      const groove = '#8a2360';                                     // darker fold lines
+      const fold = (pts) => pts.forEach((p, i) => { if (i) buf.line(pts[i - 1][0], pts[i - 1][1], p[0], p[1], groove); });
+      fold([[6, 11], [9, 9], [12, 11], [15, 9]]);                   // gyri (fold lines)
+      fold([[14, 5], [16, 9], [15, 12], [20, 11], [24, 13]]);
+      fold([[8, 16], [11, 14], [14, 16]]);
+      fold([[17, 16], [21, 15], [25, 16]]);                         // cerebellum ridge
+    },
+  });
+
+  // ------------------------------------------------------------------ battery (animated charge, new)
+  // A grey cell with a terminal nub. Charge fills from the bottom: two green segments are full and the
+  // top slot is empty, flickering on as the charge pulse.
+  Pres.registerProp('battery', {
+    label: 'Battery', w: 20, h: 32, animated: true,
+    draw(buf, t) {
+      solid(buf, T.grey, (b) => {
+        b.rect(7, 1, 6, 3, 'x');                                    // terminal nub
+        b.rect(1, 4, 18, 27, 'x');                                  // cell
+      });
+      flat(buf, shape(buf, (b) => b.rect(4, 7, 12, 22, 'x')), OL);         // inset well (outline colour)
+      buf.rect(5, 8, 10, 20, SCREEN);
+      const slot = (y, lit) => {
+        buf.rect(5, y, 10, 6, lit ? T.green.mid : SCREEN);
+        if (lit) { buf.rect(5, y, 10, 1, T.green.hi); buf.rect(5, y + 5, 10, 1, T.green.lo); }
+      };
+      slot(8, Math.floor(t * 4) % 2 === 1);                         // top slot: charge pulse
+      slot(15, true);
+      slot(22, true);
+    },
+  });
+
+  // ------------------------------------------------------------------ arrow down (animated shine, new)
+  // The 'arrow' prop turned to point down: a steel shaft and a broad head; a cream shine runs down the shaft.
+  Pres.registerProp('arrow-down', {
+    label: 'Down arrow', w: 16, h: 32, animated: true,
+    draw(buf, t) {
+      solid(buf, T.steel, (b) => {
+        b.rect(5, 1, 6, 16, 'x');                                   // shaft
+        poly(b, [[1, 16], [15, 16], [8, 31]], 'x');                 // broad head
+      });
+      const pos = 2 + (Math.floor(t * 8) % 10);
+      for (let k = 0; k < 4; k++) buf.set(6, pos + k, T.cream.hi);
+    },
+  });
+
+  // ------------------------------------------------------------------ arrow up (animated shine, new)
+  // The same steel arrow pointing up; the shine runs up the shaft.
+  Pres.registerProp('arrow-up', {
+    label: 'Up arrow', w: 16, h: 32, animated: true,
+    draw(buf, t) {
+      solid(buf, T.steel, (b) => {
+        b.rect(5, 15, 6, 16, 'x');                                  // shaft
+        poly(b, [[1, 16], [15, 16], [8, 1]], 'x');                  // broad head
+      });
+      const pos = 26 - (Math.floor(t * 8) % 8);
+      for (let k = 0; k < 4; k++) buf.set(6, pos - k, T.cream.hi);
+    },
+  });
+
+  // ------------------------------------------------------------------ cycle (animated turn, new)
+  // Two big teal arcs, each ending in a large arrowhead, chase each other half a turn apart (a refresh symbol).
+  // The pair turns 45 degrees per step, four steps a second, and repeats every 180 degrees.
+  Pres.registerProp('cycle', {
+    label: 'Cycle arrows', w: 28, h: 28, animated: true,
+    draw(buf, t) {
+      const R = 8.75, HALF = 2.8, HEAD = 5, BODY = 112, TIP = 40;
+      const rot = (Math.floor(t * 4) % 4) * 45;                     // 4 steps a second, 45 degrees each
+      const starts = [0, 180].map((a) => a + 45 + rot);
+      const pt = (r, deg) => [14 + r * Math.cos((deg * Math.PI) / 180), 14 + r * Math.sin((deg * Math.PI) / 180)];
+      const sil = shape(buf, (b) => {
+        for (let y = 0; y < 28; y++) for (let x = 0; x < 28; x++) {
+          const dx = x + 0.5 - 14, dy = y + 0.5 - 14, r = Math.hypot(dx, dy);
+          if (r < R - HALF || r > R + HALF) continue;
+          const a = (Math.atan2(dy, dx) * 180) / Math.PI;
+          if (starts.some((s) => ((((a - s) % 360) + 360) % 360) <= BODY)) b.set(x, y, 'x');
+        }
+        starts.forEach((s) => {
+          const e = s + BODY;
+          poly(b, [pt(R - HEAD, e), pt(R + HEAD, e), pt(R, e + TIP)], 'x');   // large arrowhead
+        });
+      });
+      bevel(buf, sil, T.teal);
     },
   });
 })(window);

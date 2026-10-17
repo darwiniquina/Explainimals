@@ -15,6 +15,10 @@ to check a scenario.
 | sunset | Retro dusk | dark | 114 |
 | dungeon | Dungeon | dark | 116 |
 | arcade | Arcade room | dark | 116 |
+| city | City street | light | 116 |
+| home | Living room | light | 116 |
+| office | Office | light | 116 |
+| lab | Science lab | light | 118 |
 
 ## Props
 
@@ -42,6 +46,26 @@ to check a scenario.
 | floppy | Floppy disk | 26 x 26 |
 | chip | CPU chip | 28 x 28 |
 | terminal | Terminal | 32 x 26 |
+| coin | Coin | 24 x 24 |
+| building | Building | 30 x 36 |
+| document | Document | 24 x 30 |
+| bin | Bin | 24 x 30 |
+| calendar | Calendar | 28 x 28 |
+| clock | Clock | 28 x 28 |
+| book | Book | 28 x 24 |
+| key | Key | 30 x 18 |
+| trophy | Trophy | 26 x 30 |
+| phone | Phone | 18 x 32 |
+| sun | Sun | 30 x 30 |
+| moon | Moon | 24 x 28 |
+| tree | Tree | 28 x 36 |
+| drop | Water drop | 18 x 26 |
+| flame | Flame | 22 x 30 |
+| brain | Brain | 30 x 26 |
+| battery | Battery | 20 x 32 |
+| arrow-down | Down arrow | 16 x 32 |
+| arrow-up | Up arrow | 16 x 32 |
+| cycle | Cycle arrows | 28 x 28 |
 
 ## Skins
 

@@ -1,5 +1,5 @@
 /*
- * backgrounds.js - the seven stage backgrounds (240 x 135 grid, see presentation/CONTRACT.md).
+ * backgrounds.js - the eleven stage backgrounds (240 x 135 grid, see presentation/CONTRACT.md).
  *
  * Retro 8/16-bit look: a few saturated console colours, hard edges, two-tone shading, checkerboard
  * dithering between sky bands, tile-like repeated patterns and a dark outline on foreground shapes.
@@ -540,6 +540,345 @@
         }
         b.rect(x + 4, top + 9 + (scan % 9), 8, 1, SCAN);
       });
+    },
+  });
+
+// ------------------------------------------------------------ 8. city street
+  Pres.registerBackground('city', {
+    label: 'City street',
+    tone: 'light',
+    ground: 116,
+    draw(b) {
+      const HAZE = '#8fc0e8', GLASS_DIM = '#3b5f8c';
+      const PAVE = '#b3b0bd', PAVE_LINE = '#9e9baa', ROAD = '#3d3f4e';
+      sky(b, 84, ['#2f72c9', '#4f95e0', '#86c2ef', '#b8dcf4']);
+
+      // far layer: pale haze blocks [x, width, top], low contrast so the left third stays calm
+      [[0, 12, 72], [10, 9, 66], [17, 14, 76], [30, 10, 68], [38, 16, 80], [52, 9, 70], [59, 13, 64],
+        [70, 11, 72], [80, 14, 66], [92, 10, 70], [100, 15, 60], [113, 12, 68], [123, 10, 74], [131, 16, 62],
+        [145, 11, 70], [154, 14, 66], [166, 10, 72], [174, 15, 58], [187, 12, 68], [197, 9, 64],
+        [204, 13, 50], [215, 11, 44], [224, 16, 38]].forEach(([x, w, top]) => {
+        b.rect(x, top, w, 116 - top, HAZE);
+      });
+
+      // mid layer: grey stone blocks with two-tone shading; windows only right of the left third
+      [[0, 20, 88], [18, 16, 92], [34, 14, 86], [46, 22, 94], [66, 12, 90], [76, 14, 82], [88, 18, 80],
+        [104, 14, 86], [116, 16, 78], [130, 12, 88], [140, 18, 82], [156, 12, 76], [166, 16, 86],
+        [180, 14, 80], [192, 12, 70]].forEach(([x, w, top]) => {
+        b.rect(x, top, w, 116 - top, TILE_A);
+        b.rect(x + w - 2, top, 2, 116 - top, TILE_B);
+        b.rect(x, top, w, 1, TILE_B);
+        if (x < 76) return;
+        for (let wy = top + 4; wy <= 100; wy += 8) {
+          for (let wx = x + 3; wx <= x + w - 6; wx += 6) {
+            b.rect(wx, wy, 3, 4, (wx + wy) % 4 === 0 ? MUSTARD : GLASS_DIM);
+          }
+        }
+      });
+
+      // two tall brick blocks at the right edge
+      [[206, 14, 50], [222, 18, 36]].forEach(([x, w, top]) => {
+        b.rect(x, top, w, 116 - top, BRICK_WALL);
+        b.rect(x + w - 2, top, 2, 116 - top, BRICK_JOINT);
+        for (let wy = top + 5; wy <= 100; wy += 8) {
+          for (let wx = x + 3; wx <= x + w - 6; wx += 5) b.rect(wx, wy, 3, 4, GLASS_DIM);
+        }
+      });
+
+      // street lamp at the right edge
+      b.rect(233, 60, 2, 56, INK);
+      b.rect(228, 59, 7, 2, INK);
+      b.rect(228, 61, 2, 2, MUSTARD);
+
+      // paved sidewalk where the characters stand, then a kerb and the road with a dashed centre line
+      floor(b, 116, CREAM, PAVE);
+      for (let y = 117; y < 124; y++) {
+        for (let x = 0; x < W; x++) {
+          if (y === 120 || (y < 120 ? x % 16 === 0 : x % 16 === 8)) b.set(x, y, PAVE_LINE);
+        }
+      }
+      b.rect(0, 124, W, 2, PAVE_LINE);
+      b.rect(0, 126, W, H - 126, ROAD);
+      for (let x = 0; x < W; x += 20) b.rect(x, 130, 10, 1, MUSTARD);
+    },
+    tick(b, t) {
+      // a small cloud drifts across the sky
+      drift(b, cloud(CLOUD_SMALL, CREAM, CLOUD_SHADE, GLASS), 60, 14, 2, t);
+      // a few windows switch their lights on and off (each spot is a dark window painted in draw)
+      [[209, 55], [214, 71], [119, 90], [125, 98], [225, 57]].forEach(([x, y], i) => {
+        if ((Math.floor(t * 1.5) + i) % 3 === 0) b.rect(x, y, 3, 4, MUSTARD);
+      });
+    },
+  });
+
+  // ------------------------------------------------------------ 9. living room
+  Pres.registerBackground('home', {
+    label: 'Living room',
+    tone: 'light',
+    ground: 116,
+    draw(b) {
+      const STRIPE = '#e3d1a6', WAINS = '#d8bf8a';
+      const SOFA = '#3a8088', SOFA_HI = '#4f9aa0', SOFA_DARK = '#1f5560';
+      const RUG = '#7a9a6a';
+      const CURTAIN = dk(MUSTARD, 0.15);
+
+      // wall: cream with thin vertical stripes, a chair rail at y 88, wainscot panels, skirting at the floor
+      b.rect(0, 0, W, 88, CREAM);
+      for (let x = 0; x < W; x += 12) b.rect(x, 0, 2, 88, STRIPE);
+      b.rect(0, 88, W, 3, WOOD_LIGHT);
+      b.rect(0, 91, W, 22, WAINS);
+      for (let x = 20; x < W; x += 40) b.rect(x, 94, 1, 16, STRIPE);
+      b.rect(0, 113, W, 3, WOOD);
+
+      // wooden plank floor with staggered joints, and a small rug in front of the sofa
+      floor(b, 116, WOOD_LIGHT, WOOD);
+      for (let y = 117; y < H; y++) {
+        const row = Math.floor((y - 117) / 6), off = row % 2 ? 12 : 0;
+        for (let x = 0; x < W; x++) {
+          let c = WOOD;
+          if ((y - 117) % 6 === 5 || (x + off) % 24 === 0) c = WOOD_DARK;
+          else if ((y - 117) % 6 === 0) c = WOOD_LIGHT;
+          b.set(x, y, c);
+        }
+      }
+      b.rrect(92, 121, 84, 11, 2, RUG);
+      b.frame(92, 121, 84, 11, WOOD_DARK);
+
+      // window in the top-left: cream frame, sky glass with a darker top band, cross bars, sill, curtains
+      b.rect(50, 8, 36, 32, CREAM);
+      b.rect(53, 11, 30, 26, CLOUD_SHADE);
+      b.rect(53, 11, 30, 4, GLASS);
+      b.rect(67, 11, 2, 26, CREAM);
+      b.rect(53, 23, 30, 2, CREAM);
+      b.frame(50, 8, 36, 32, WOOD_DARK);
+      b.rect(46, 40, 44, 2, WOOD_LIGHT);
+      b.rect(46, 42, 44, 1, WOOD_DARK);
+      b.rect(41, 5, 52, 1, WOOD_DARK);
+      b.rect(43, 6, 6, 36, CURTAIN);
+      b.rect(86, 6, 6, 36, CURTAIN);
+      b.rect(45, 6, 1, 36, WOOD_LIGHT);
+      b.rect(88, 6, 1, 36, WOOD_LIGHT);
+
+      // wall clock above the sofa (second hand moves in tick)
+      const CX = 216, CY = 30;
+      b.blit(paint(ellipses([[CX, CY, 7, 7]]), () => CREAM).outline(INK));
+      b.line(CX, CY, CX, CY - 4, INK);
+      b.line(CX, CY, CX + 3, CY + 1, INK);
+
+      // teal sofa at the right edge: back, arms, seat cushions with seams, dark base
+      b.rect(200, 84, 38, 17, SOFA);
+      b.rect(200, 84, 38, 1, SOFA_HI);
+      b.rect(194, 92, 8, 23, SOFA);
+      b.rect(232, 92, 8, 23, SOFA);
+      b.rect(202, 101, 30, 14, SOFA);
+      b.rect(202, 101, 30, 1, SOFA_HI);
+      [211, 219, 227].forEach((x) => b.rect(x, 102, 1, 13, SOFA_DARK));
+      b.rect(194, 114, 46, 2, SOFA_DARK);
+
+      // potted plant at the left edge
+      b.blit(cloud([[4, 0, 6, 2], [1, 2, 12, 4], [0, 6, 14, 3]], LEAF, LEAF, INK).buf, 0, 92);
+      b.rrect(2, 102, 14, 12, 2, BRICK);
+    },
+    tick(b, t) {
+      // a small cloud drifts behind the window glass, clipped to the panes and kept off the cross bars
+      const cl = cloud(CLOUD_SMALL, CREAM, CLOUD_SHADE, GLASS);
+      const ox = 53 + (Math.floor(t * 2) % 38) - cl.w;
+      for (let j = 0; j < cl.h; j++) {
+        for (let i = 0; i < cl.w; i++) {
+          const x = ox + i, y = 14 + j;
+          const inGlass = x >= 53 && x < 83 && y >= 11 && y < 37 && x !== 67 && x !== 68 && y !== 23 && y !== 24;
+          if (inGlass && cl.buf.has(i, j)) b.set(x, y, cl.buf.get(i, j));
+        }
+      }
+      // second hand of the wall clock, one step per second
+      const a = ((Math.floor(t) % 60) / 60) * Math.PI * 2;
+      b.line(216, 30, 216 + Math.sin(a) * 5, 30 - Math.cos(a) * 5, BRICK);
+    },
+  });
+
+// ------------------------------------------------------------ 8. office
+  Pres.registerBackground('office', {
+    label: 'Office',
+    tone: 'light',
+    ground: 116,
+    draw(b) {
+      const WALL = '#d9d3c4', WALL_LO = '#cac2ae', RAIL = '#b3aa92';
+      const SKY_A = '#bfe0f2', SKY_B = '#9fcbe6', BLDG = '#6f8eaa', BLDG_TOP = '#557391';
+      const DESK = '#b98a5a', DESK_DARK = '#8a6038';
+      const TILE_A = '#8fa6a4', TILE_B = '#869b99', GROUT = '#6e8482';
+
+      // wall: plain upper wall, a darker lower band with a rail, and a skirting board at the floor
+      b.rect(0, 0, W, 94, WALL);
+      b.rect(0, 94, W, 17, WALL_LO);
+      b.rect(0, 94, W, 1, RAIL);
+      b.rect(0, 111, W, 5, RAIL);
+
+      // small framed picture at the top-left, above the character zone
+      b.rect(14, 14, 28, 22, INK);
+      b.rect(16, 16, 24, 18, CREAM);
+      for (let x = 16; x < 40; x++) {
+        const top = Math.round(22 + Math.abs(x - 27) * 0.5);
+        b.rect(x, top, 1, 34 - top, LEAF);
+      }
+
+      // big window: dark frame, a two-band sky, a city skyline, blinds across the top, a sill below
+      b.rect(90, 10, 82, 50, INK);
+      b.rect(93, 13, 76, 22, SKY_A);
+      b.rect(93, 35, 76, 22, SKY_B);
+      b.dither(93, 34, 76, 2, SKY_B, 0);
+      [[96, 7, 40], [103, 5, 34], [108, 9, 45], [117, 6, 32], [123, 8, 41], [131, 4, 36],
+        [135, 9, 44], [144, 6, 38], [150, 8, 46], [158, 7, 35], [165, 4, 42]].forEach(([x, w, top]) => {
+        b.rect(x, top, w, 57 - top, BLDG);
+        b.rect(x, top, w, 1, BLDG_TOP);
+      });
+      b.rect(93, 13, 76, 8, CREAM);                              // blinds: cream slats, every other one shaded
+      for (let y = 14; y < 21; y += 2) b.rect(93, y, 76, 1, WALL);
+      b.rect(129, 13, 2, 44, INK);                               // centre mullion
+      b.rect(86, 60, 90, 2, CREAM);                              // window sill
+      b.rect(86, 62, 90, 1, RAIL);
+
+      // desk on the right: a monitor with a mug, legs down to the floor
+      b.rect(176, 84, 48, 3, DESK);
+      b.rect(176, 87, 48, 1, DESK_DARK);
+      b.rect(178, 88, 3, 28, DESK_DARK);
+      b.rect(219, 88, 3, 28, DESK_DARK);
+      b.rect(188, 56, 26, 23, RAIL);                             // monitor body
+      b.rect(190, 58, 22, 18, SKY_B);                            // screen
+      b.rect(190, 58, 22, 3, BLDG_TOP);                          // title bar
+      b.rect(192, 64, 12, 1, BLDG_TOP);
+      b.rect(192, 67, 16, 1, BLDG_TOP);
+      b.rect(192, 70, 9, 1, BLDG_TOP);
+      b.rect(192, 73, 13, 1, BLDG_TOP);
+      b.rect(199, 79, 4, 4, RAIL);                               // stand neck
+      b.rect(193, 83, 16, 1, RAIL);                              // stand foot
+      b.rect(214, 78, 5, 6, CREAM);                              // mug
+      b.frame(214, 78, 5, 6, INK);
+
+      // plant in the far right corner: orange pot, bushy leaves
+      b.rrect(227, 105, 12, 11, 2, BRICK);
+      b.blit(cloud([[5, 0, 4, 4], [2, 4, 10, 5], [0, 9, 14, 6]], LEAF, LEAF, INK).buf, 223, 89);
+
+      // square floor tiles in a checker, with a dark edge where the characters stand
+      floor(b, 116, GROUT, TILE_B);
+      for (let y = 117; y < H; y++) {
+        const row = Math.floor((y - 117) / 9);
+        for (let x = 0; x < W; x++) {
+          let c = (Math.floor(x / 12) + row) % 2 ? TILE_A : TILE_B;
+          if ((y - 117) % 9 === 8 || x % 12 === 11) c = GROUT;
+          b.set(x, y, c);
+        }
+      }
+    },
+    tick(b, t) {
+      // a scan line rolls down the monitor screen
+      b.rect(190, 58 + (Math.floor(t * 5) % 18), 22, 1, CREAM);
+    },
+  });
+
+  // ------------------------------------------------------------ 9. science lab
+  Pres.registerBackground('lab', {
+    label: 'Science lab',
+    tone: 'light',
+    ground: 118,
+    draw(b) {
+      const WALL = '#c4e3d8', TILE = '#e6f4ee', GROUT = '#bcdcd0', GREY = '#9aabb3';
+      const SHELF = '#6b7a84', BENCH = '#56606a', CAB = '#d7e2e6', MIC = '#3e4650';
+      const LIQ_G = '#7ed6a0';
+      const FLOOR_A = '#9fc7bb', FLOOR_B = '#8fb9ad', FLOOR_LINE = '#6f968b';
+
+      // pale mint wall, a band of wall tiles behind the bench, a light skirting at the floor
+      b.rect(0, 0, W, 118, WALL);
+      for (let y = 58; y < 92; y++) {
+        for (let x = 0; x < W; x++) b.set(x, y, (y - 58) % 6 === 5 || x % 16 === 15 ? GROUT : TILE);
+      }
+      b.rect(0, 112, W, 6, CAB);
+      b.rect(0, 112, W, 1, GREY);
+
+      // shelf across the top-left with bottles and jars (above the character zone)
+      b.rect(6, 30, 62, 2, SHELF);
+      b.rect(8, 32, 2, 4, SHELF);
+      b.rect(62, 32, 2, 4, SHELF);
+      [[9, 8, '#4f95e0'], [16, 6, MUSTARD], [23, 10, LIQ_G], [31, 7, BRICK], [39, 9, '#4f95e0'], [47, 6, MUSTARD]]
+        .forEach(([x, h, c]) => {
+          b.rect(x, 30 - h, 4, h, CAB);
+          b.rect(x, 30 - h + Math.floor(h / 2), 4, Math.ceil(h / 2), c);
+          b.frame(x, 30 - h, 4, h, INK);
+          b.rect(x + 1, 28 - h, 2, 2, SHELF);
+        });
+
+      // round-bottom flask with mustard liquid, sitting on the bench
+      const roundFlask = (cx, cy, liq) => {
+        const m = ellipses([[cx, cy, 5, 5]]);
+        m.rect(cx - 2, cy - 11, 4, 7, '#000');
+        b.blit(paint(m, (x, y) => (y >= cy ? liq : CAB)).outline(INK));
+      };
+      // conical flask (Erlenmeyer) 9 px wide, its base on row y + 8
+      const cone = (x, y, liq) => {
+        const m = new Buf();
+        for (let r = 0; r < 9; r++) {
+          const hw = r < 4 ? 1 : Math.min(4, r - 2);
+          for (let c = -hw; c <= hw; c++) m.set(x + 4 + c, y + r, '#000');
+        }
+        b.blit(paint(m, (px, py) => (py >= y + 5 ? liq : CAB)).outline(INK));
+      };
+      // beaker 8 px wide, its base on row y + 9
+      const beaker = (x, y, liq) => {
+        b.rect(x, y, 8, 10, CAB);
+        b.rect(x + 1, y + 5, 6, 4, liq);
+        b.frame(x, y, 8, 10, INK);
+        b.set(x + 6, y + 3, INK);
+        b.set(x + 6, y + 6, INK);
+      };
+
+      // long lab bench along the right edge: dark top, light cabinet with doors below
+      b.rect(170, 92, 70, 3, BENCH);
+      b.rect(170, 92, 70, 1, GREY);
+      b.rect(172, 95, 66, 23, CAB);
+      b.frame(172, 95, 66, 23, GREY);
+      b.rect(205, 95, 1, 23, GREY);
+      b.rect(202, 102, 1, 3, GREY);
+      b.rect(208, 102, 1, 3, GREY);
+
+      roundFlask(180, 85, MUSTARD);
+      beaker(190, 82, '#4f95e0');
+      cone(200, 83, LIQ_G);
+
+      // instrument box with an LED (the LED blinks in tick)
+      b.rect(212, 82, 9, 10, CAB);
+      b.frame(212, 82, 9, 10, INK);
+      b.rect(213, 83, 7, 1, GREY);
+      b.rect(213, 85, 7, 1, GREY);
+      b.rect(214, 88, 2, 2, GREY);
+
+      // microscope at the far right edge
+      const mic = (x, y) => {
+        b.rect(x + 3, y, 6, 2, MIC);             // eyepiece head
+        b.rect(x + 4, y + 2, 4, 8, MIC);         // tube
+        b.rect(x + 8, y + 6, 3, 8, MIC);         // arm
+        b.rect(x + 1, y + 10, 7, 1, GREY);       // stage
+        b.rect(x + 4, y + 11, 2, 3, '#4f95e0');  // objective lens
+        b.rect(x, y + 14, 12, 2, MIC);           // base
+      };
+      mic(224, 76);
+
+      // square floor tiles in a checker, with a darker edge where the characters stand
+      floor(b, 118, FLOOR_LINE, FLOOR_B);
+      for (let y = 119; y < H; y++) {
+        const row = Math.floor((y - 119) / 8);
+        for (let x = 0; x < W; x++) {
+          let c = (Math.floor(x / 16) + row) % 2 ? FLOOR_A : FLOOR_B;
+          if ((y - 119) % 8 === 7 || x % 16 === 15) c = FLOOR_LINE;
+          b.set(x, y, c);
+        }
+      }
+    },
+    tick(b, t) {
+      // bubbles rise through the round flask, and the instrument LED blinks
+      for (let i = 0; i < 3; i++) {
+        const yy = Math.round(90 - ((t * 5 + i * 2.2) % 5));
+        b.set(178 + (i % 2) * 3, yy, CREAM);
+      }
+      if (Math.floor(t * 2) % 2 === 0) b.rect(214, 88, 2, 2, '#7ed6a0');
     },
   });
 })(window);
