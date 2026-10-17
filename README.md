@@ -29,6 +29,23 @@ Restart the agent afterwards. Only the skill folder (`plugin/skills/explainimals
 
 The Claude.ai chat and the Claude desktop app cannot run commands, so there is no one-prompt install. [INSTALL.md](INSTALL.md) has the zip steps for those, and manual steps for every other agent.
 
+## Update
+
+Updates are not automatic. To get the latest version, give your AI agent this prompt:
+
+```text
+Update the Explainimals skill from https://github.com/darwiniquina/Explainimals by following https://raw.githubusercontent.com/darwiniquina/Explainimals/main/INSTALL.md
+```
+
+It checks what is installed and replaces it with the newest version, asking you once first. Restart the agent afterwards. In Claude Code you can also run these two commands yourself:
+
+```bash
+claude plugin marketplace update explainimals
+claude plugin update explainimals@explainimals
+```
+
+For Codex, use the same Codex install prompt as above: the installer replaces the old folder after you confirm. For the Claude.ai chat and desktop app, upload the new zip (see [INSTALL.md](INSTALL.md)).
+
 ## Use it
 
 Ask in plain language, for example:
