@@ -1,0 +1,11 @@
+{
+  "name": "explainimals",
+  "private": true,
+  "description": "Test harness for the Explainimals repo",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
