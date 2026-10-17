@@ -105,6 +105,10 @@ When the install is done, tell the user:
 
 Optional check (the only thing you may run from the installed copy; offer it, do not insist): with Node 18+, run `node <installed skill folder>/scripts/validate.js <installed skill folder>/references/examples/sky-blue.js`. It should print `0 errors, 0 warnings`.
 
+## Updating
+
+The user may ask you to UPDATE instead of install. Follow the same steps: Claude Code path 2 updates in place; for Codex, the installer aborts when the folder exists, so B3 (ask once, delete only the old `explainimals` folder, install again) is the update; for Claude.ai and the desktop chat, the user deletes the old skill in settings and uploads a new zip made as in section C. Plugin installs in Claude Code are cached by version, so an update only shows up after `plugin/.claude-plugin/plugin.json` has a higher version on `main`. Check the version before and after with `claude plugin list` and report both.
+
 ## Remove it
 
 Ask the user before you delete anything.
