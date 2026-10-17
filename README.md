@@ -72,7 +72,7 @@ Before it builds, your AI shows a short plan (the takeaway, the cast and the sli
 | Cat | careful checker: verifies and reviews |
 | Frog | comic reactor: jokes, gets startled |
 
-Limits (v0.2.2): a fixed 240 x 135 pixel stage; 6 characters, 22 props and 7 backgrounds (the generated
+Limits (v0.2.3): a fixed 240 x 135 pixel stage; 6 characters, 22 props and 7 backgrounds (the generated
 `plugin/skills/explainimals/references/catalog.md` lists them); at most 2 characters on screen per slide; a crowded
 slide falls back to a bottom caption, hidden prop labels or dropped props, which the validator reports; the output is
 an HTML file, not a video file.
