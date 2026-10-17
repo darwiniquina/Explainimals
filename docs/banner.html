@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Explainimals banner</title>
+<!-- Re-render docs/banner.png (PowerShell): Start-Process -Wait "C:Program Files (x86)MicrosoftEdgeApplicationmsedge.exe" -ArgumentList '--headless=new','--disable-gpu','--no-first-run','--hide-scrollbars','--force-device-scale-factor=1','--user-data-dir=<scratch folder>','--screenshot=<repo>docsanner.png','--window-size=1600,560','file:///<repo>/docs/banner.html' -->
+<style>
+  /* The banner is built on a 400 x 140 logical grid and shown at exactly 4x: 1600 x 560. */
+  html, body { margin: 0; padding: 0; background: #0b0912; }
+  #banner { position: relative; width: 1600px; height: 560px; overflow: hidden; background: #0b0912; }
+  #scene { position: absolute; left: 0; top: 0; width: 1600px; height: 560px; display: block; shape-rendering: crispEdges; }
+  .ch { position: absolute; width: 244px; height: 304px; }     /* a 61 x 76 character at 4x */
+  .ch svg { display: block; shape-rendering: crispEdges; }
+  .ch svg * { shape-rendering: crispEdges; }
+</style>
+</head>
+<body>
+<div id="banner"></div>
+
+<!-- the repo's character rig (same order as dashboard.html) -->
+<script src="../character/parts.js"></script>
+<script src="../character/skin-penguin.js"></script>
+<script src="../character/skin-frog.js"></script>
+<script src="../character/skin-dog.js"></script>
+<script src="../character/skin-whisker.js"></script>
+<script src="../character/skin-rabbit.js"></script>
+<script src="../character/skin-bear.js"></script>
+<script src="../character/character.js"></script>
+
+<!-- the presentation toolkit: pixel buffers, registry, font, bubbles, props -->
+<script src="../presentation/pixel.js"></script>
+<script src="../presentation/registry.js"></script>
+<script src="../presentation/font.js"></script>
+<script src="../presentation/ui.js"></script>
+<script src="../presentation/props.js"></script>
+
+<script>
+(function () {
+  'use strict';
+  var P = window.Pres;
+  var W = 400, H = 140, S = 4;
+
+  // palette
+  var NAVY = '#0b0912', NAVY2 = '#161225', SKY3 = '#1d1836', SKY4 = '#241d46', SKY5 = '#2d2556';
+  var HILL = '#1a1533', HILL2 = '#221c42', GROUND_LINE = '#3fa59b', GROUND = '#161225', GROUND2 = '#1f1b36';
+  var MUSTARD = '#f5c04f', MUSTARD_SH = '#7a4a12', TEAL = '#7fd6c8', CREAM = '#f7eed2';
+  var STAR = '#5a5690', STAR_HI = '#9d98d6';
+
+  var GROUND_Y = 132;           // the feet line; characters stand here
+  var BOX_TOP = GROUND_Y - 70;  // a character's box top (feet sit 70 px below it, see presentation/engine.js)
+
+  var bg = new P.Buf();
+
+  // ---- sky: flat bands, each boundary dithered over three rows
+  var bands = [[0, NAVY], [22, NAVY2], [44, SKY3], [70, SKY4], [96, SKY5]];
+  bands.forEach(function (b, i) {
+    var y0 = b[0], y1 = i + 1 < bands.length ? bands[i + 1][0] : GROUND_Y;
+    bg.rect(0, y0, W, y1 - y0, b[1]);
+  });
+  // each boundary: three rows of checkerboard that step from the band above to the band below
+  bands.forEach(function (b, i) {
+    if (i + 1 >= bands.length) return;
+    var y1 = bands[i + 1][0], nxt = bands[i + 1][1];
+    for (var x = 0; x < W; x++) {
+      bg.set(x, y1 - 1, (x + y1 - 1) % 2 === 0 ? nxt : b[1]);
+      bg.set(x, y1, (x + y1) % 2 === 0 ? b[1] : nxt);
+      bg.set(x, y1 + 1, (x + y1 + 1) % 2 === 0 ? nxt : nxt);
+    }
+  });
+
+  // ---- stars (seeded, so the picture is the same every time)
+  var seed = 20261017;
+  function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+  var AVOID = [];                                   // boxes [x0, y0, x1, y1] the stars keep out of
+  function avoid(x0, y0, x1, y1) { AVOID.push([x0, y0, x1, y1]); }
+  function clear(x, y) { return !AVOID.some(function (a) { return x >= a[0] - 2 && x <= a[2] + 2 && y >= a[1] - 2 && y <= a[3] + 2; }); }
+
+  // ---- scene pieces: title, tagline, props, bubbles
+  var TITLE_X = 10, TITLE_Y = 5, TITLE_S = 3;
+  var T1 = { x: 10, y: 38 }, T2 = { x: 10, y: 48 };
+  var title = P.font.measure('EXPLAINIMALS', { scale: TITLE_S });
+  avoid(TITLE_X - 2, TITLE_Y - 2, TITLE_X + title.w + TITLE_S + 2, TITLE_Y + title.h + TITLE_S + 2);
+  var tagA = P.font.measure('Any topic in. A talking pixel-art explainer out.');
+  var tagB = P.font.measure('One prompt - one JSON scenario - one HTML file');
+  avoid(T1.x - 2, T1.y - 2, T1.x + tagA.w + 2, T1.y + 10);
+  avoid(T2.x - 2, T2.y - 2, T2.x + tagB.w + 2, T2.y + 10);
+
+  var fg = new P.Buf();     // props and bubbles: drawn above the sky, below the characters
+
+  function placeProp(id, x, y, t) {
+    var buf = new P.Buf();
+    P.props[id].draw(buf, t || 0);
+    var b = buf.bounds();
+    fg.blit(buf, x - b.x, y - b.y);
+    avoid(x, y, x + b.w - 1, y + b.h - 1);
+  }
+  function placeBubble(text, x, y, opts) {
+    var bub = P.ui.bubble(Object.assign({ text: text, theme: 'light' }, opts || {}));
+    fg.blit(bub.buf, x, y);
+    avoid(x, y, x + bub.w - 1, y + bub.h - 1 + (opts && opts.tail && opts.tail !== 'none' ? 5 : 0));
+    return bub;
+  }
+
+  // sky-question bubble and the moon sit in the top right, the "Ask me" bubble under it
+  placeProp('moon', 222, 2, 0);
+  placeBubble('Why is the sky blue?', 270, 4, { maxWidth: 200 });
+  placeProp('lightbulb', 262, 22, 0.25);
+  placeBubble('Ask me anything!', 300, 33, { maxWidth: 200, tail: 'right' });
+
+  // ---- characters: x of each box, the scene spec for each
+  var SLOTS = [
+    { skin: 'frog',    x: 7,   spec: { expression: 'curious', pose: 'shrug' } },
+    { skin: 'dog',     x: 72,  spec: { expression: 'happy',   pose: 'point_right' } },
+    { skin: 'penguin', x: 137, spec: { expression: 'joy',     pose: 'wave' }, t: 0.096 },
+    { skin: 'whisker', x: 202, spec: { expression: 'happy',   pose: 'present' } },
+    { skin: 'rabbit',  x: 267, spec: { expression: 'joy',     pose: 'cheer' }, t: 0 },
+    { skin: 'bear',    x: 332, spec: { expression: 'happy',   pose: 'hands_on_hips' } }
+  ];
+
+  // ---- stars: after the layout so they keep clear of the text and props
+  for (var i = 0; i < 150; i++) {
+    var sx = Math.floor(rnd() * W), sy = Math.floor(rnd() * 58);
+    if (!clear(sx, sy)) continue;
+    var r = rnd();
+    if (r < 0.10) { bg.set(sx, sy, STAR_HI); }
+    else if (r < 0.55) { bg.set(sx, sy, STAR); }
+  }
+  // a few sparkles (plus-shaped), mustard and teal
+  [[190, 14, MUSTARD], [350, 8, TEAL], [48, 14, TEAL], [246, 50, STAR_HI], [158, 52, STAR_HI]].forEach(function (s) {
+    if (!clear(s[0], s[1])) return;
+    bg.set(s[0], s[1] - 1, s[2]).set(s[0] - 1, s[1], s[2]).set(s[0], s[1], s[2]).set(s[0] + 1, s[1], s[2]).set(s[0], s[1] + 1, s[2]);
+  });
+
+  // ---- hills and ground, drawn on top of the sky
+  function ridge(base, amp, freq, phase, color) {
+    for (var x = 0; x < W; x++) {
+      var top = Math.round(base + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 2.7 + phase) * amp * 0.4);
+      for (var y = top; y < H; y++) bg.set(x, y, color);
+    }
+  }
+  ridge(108, 3, 0.045, 0.6, HILL);
+  ridge(116, 2, 0.07, 2.1, HILL2);
+
+  bg.rect(0, GROUND_Y, W, 1, GROUND_LINE);
+  bg.rect(0, GROUND_Y + 1, W, H - GROUND_Y - 1, GROUND);
+  for (var gy = GROUND_Y + 3; gy < H; gy += 3) {
+    for (var gx = (gy % 2) * 2; gx < W; gx += 6) bg.set(gx, gy, GROUND2);
+  }
+
+  // ---- render the flat layer as one SVG on the 400 x 140 grid, then the title over it
+  var txt = new P.Buf();
+  P.font.draw(txt, 'EXPLAINIMALS', TITLE_X, TITLE_Y, MUSTARD, { scale: TITLE_S, shadow: MUSTARD_SH });
+  P.font.draw(txt, 'Any topic in. A talking pixel-art explainer out.', T1.x, T1.y, CREAM);
+  P.font.draw(txt, 'One prompt - one JSON scenario - one HTML file', T2.x, T2.y, TEAL);
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('id', 'scene');
+  svg.setAttribute('xmlns', NS);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('width', W * S);
+  svg.setAttribute('height', H * S);
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.innerHTML = bg.svg() + fg.svg() + txt.svg();
+
+  var banner = document.getElementById('banner');
+  banner.appendChild(svg);
+
+  // ---- characters: each one in its own 61 x 76 box at 4x, posed and frozen at a fixed time
+  SLOTS.forEach(function (s) {
+    var el = document.createElement('div');
+    el.className = 'ch';
+    el.style.left = (s.x * S) + 'px';
+    el.style.top = (BOX_TOP * S) + 'px';
+    banner.appendChild(el);
+    var c = new window.Character(el, { skin: s.skin, blink: false, idle: false });
+    c.apply(Object.assign({ talking: false }, s.spec), { snap: true });
+    c.tick(s.t === undefined ? 0.35 : s.t);   // a settled frame; s.t picks the moment of a wave or a bounce
+  });
+})();
+</script>
+</body>
+</html>

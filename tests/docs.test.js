@@ -32,3 +32,12 @@ test('every backticked plugin/ path in INSTALL.md exists', () => {
   const missing = paths.filter((p) => !fs.existsSync(path.join(ROOT, p)));
   assert.deepEqual(missing, []);
 });
+
+test('every local image the README shows exists', () => {
+  const srcs = [...README.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1])
+    .concat([...README.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)].map((m) => m[1]))
+    .filter((s) => !/^https?:/.test(s));
+  assert.ok(srcs.length >= 1, 'expected the README to show the banner');
+  const missing = srcs.filter((s) => !fs.existsSync(path.join(ROOT, s)));
+  assert.deepEqual(missing, []);
+});
