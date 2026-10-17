@@ -105,6 +105,8 @@ Pres.font.glyphHeight                        // pixel height of one line of text
 Pres.font.measure(text, {scale})             // -> { w, h }
 Pres.font.draw(buf, text, x, y, color, {scale, shadow})   // draw text into a Buf (top-left origin)
 Pres.font.wrap(text, maxWidth, {scale})      // -> array of lines that fit maxWidth pixels
+Pres.font.normalize(text)                    // -> text with curly quotes, dashes, ellipsis, Unicode spaces turned into ASCII
+Pres.font.unsupported(text)                  // -> distinct characters (after normalize) that have no glyph and draw as a box
 
 // every ui helper returns { buf, w, h } (a Buf drawn at origin 0,0 plus its size)
 Pres.ui.bubble({ text, maxWidth, tail })     // speech bubble; tail: 'left' | 'right' | 'none'

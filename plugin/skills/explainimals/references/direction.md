@@ -204,6 +204,25 @@ carry the tone, so the same facts can be a lecture or a story.
 - **For experts:** drop the comparisons, use the real term once and define it in the same line, `calm` or
   `upbeat` music, no jokes at the cost of accuracy.
 - Never trade a correct fact for a joke: say the true thing, then react to it.
+- **Plain text.** Dialogue and every other on-screen word use plain ASCII; section 5c lists the substitutes.
+
+## 5c. Text the font can draw
+
+The pixel font draws printable ASCII only: letters, digits, space and
+`` ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~ ``. Write every on-screen word
+(`say`, titles, panel bullets, prop labels) with these characters.
+
+- **Typographic punctuation is tolerated, but write plain ASCII.** The engine turns curly quotes into straight
+  ones, en and em dashes into a hyphen, the ellipsis character into three dots, bullets into `*`, the
+  multiplication sign into `x`, arrows into `->` and `<-`, and non-standard spaces into a space, and it removes
+  zero-width characters. Type the ASCII form yourself, so the text you check is the text the viewer sees.
+- **Accents:** drop them. Write "cafe", "naive".
+- **Emoji:** none in text. Show the feeling with an `emote` (`sparkle`, `heart`) or a prop.
+- **Symbols:** spell them out. "TM" for the trademark sign, "(c)" for the copyright sign, "EUR" for the euro sign.
+- **Other scripts:** Latin letters only. Non-English text, and non-Latin scripts such as Chinese, Arabic or
+  Cyrillic, cannot be drawn at all, so write the explainer in English.
+- `validate.js` warns about every other character and says it would draw as a box. Fix each one before
+  `build.js`; a warning here is not a style note.
 
 ## 6. Sound
 
@@ -242,3 +261,4 @@ Check each item before running `validate.js`:
 - [ ] 2-4 sound effects in total; one music mood, changed only for a real change.
 - [ ] The first slide is a title; the last slide is a recap or a cheer.
 - [ ] The scenario totals 6-9 slides and about 45-60 s.
+- [ ] All on-screen text is plain ASCII (section 5c); no `validate.js` WARN about a character the font cannot draw is left.

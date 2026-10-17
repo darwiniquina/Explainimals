@@ -63,6 +63,10 @@ they say, and which props and backgrounds appear. An AI can write it from a topi
 - **camera**: optional view control (focus, zoom, move, shake, letterbox). Without it the slide shows the whole stage.
   See Camera below.
 
+All text fields (`title`, `say`, panel bullets, prop `label`, and dialogue `say` lines) must be plain ASCII. The
+pixel font draws only printable ASCII; the engine normalises common smart quotes and dashes, and `validate.js`
+warns about any other character. See `direction.md`, "Text the font can draw".
+
 ## Transitions
 
 The `transition` field sets how a slide starts:
