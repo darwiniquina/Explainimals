@@ -1,0 +1,324 @@
+/*
+ * dashboard.css - the Pixel Explainer Studio frame and the shared px-* classes every view uses.
+ * Art direction: pixel-art UI. No border radius, no blur, no gradients, no soft shadows.
+ * Hard shadows are offset with zero blur. Borders are 2-3px solid dark lines. No emoji.
+ */
+:root {
+  --bg: #0c1021;
+  --panel: #161c33;
+  --panel2: #1f2745;
+  --line: #05070f;
+  --text: #f1eee2;
+  --muted: #8a94b8;
+  --accent: #ffd23f;
+  --accent2: #36e0c4;
+  --ok: #6cf58a;
+  --warn: #ffb020;
+  --err: #ff5470;
+  --font: Consolas, 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; border-radius: 0; }
+
+html, body { background: var(--bg); }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+}
+
+svg { shape-rendering: crispEdges; }
+canvas, img { image-rendering: pixelated; }
+
+/* ------------------------------------------------------------- frame */
+.dash-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 3px solid var(--line);
+  box-shadow: 0 4px 0 #000;
+  position: relative;
+  z-index: 2;
+}
+.dash-brand {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 #000;
+  white-space: nowrap;
+}
+.dash-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.dash-nav-btn { display: inline-flex; align-items: center; gap: 7px; }
+.dash-icon { width: 16px; height: 16px; display: block; flex: none; }
+.dash-picker {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dash-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 18px 16px 40px;
+}
+.dash-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+  background: var(--panel);
+  border-top: 3px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+.dash-status { color: var(--text); }
+.view { display: block; }
+
+/* ------------------------------------------------------------- buttons, chips, fields */
+.px-btn {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 #000;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.px-btn:hover:not(:disabled) { background: #2a3558; border-color: var(--accent2); }
+.px-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+.px-btn.on { background: var(--accent); color: #111; border-color: #000; }
+.px-btn.on:hover:not(:disabled) { background: #ffe27a; border-color: #000; }
+.px-btn.alt { background: var(--panel); color: var(--accent2); border-color: var(--accent2); }
+.px-btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.px-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.px-chip {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.px-chip:hover { border-color: var(--accent2); }
+.px-chip.on { background: var(--accent2); color: #06201b; border-color: #000; }
+
+.px-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.px-select, .px-input, .px-textarea {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: #080b17;
+  border: 2px solid var(--line);
+  padding: 5px 8px;
+}
+.px-select { cursor: pointer; }
+.px-select:disabled { opacity: .5; }
+.px-input:focus, .px-textarea:focus, .px-select:focus { outline: 2px solid var(--accent2); outline-offset: 0; }
+.px-textarea {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  color: #d6f5ff;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  tab-size: 2;
+}
+.px-pre {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #d6f5ff;
+  background: #080b17;
+  border: 2px solid var(--line);
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+/* ------------------------------------------------------------- panels, grids, tiles */
+.px-panel {
+  background: var(--panel);
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 #000;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.px-panel > h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent2);
+}
+
+.px-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.px-tile {
+  background: var(--panel2);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 #000;
+  padding: 8px;
+  text-align: center;
+}
+.px-tile[role="button"] { cursor: pointer; }
+.px-tile[role="button"]:hover,
+.px-tile[role="button"]:focus-visible { border-color: var(--accent2); outline: none; }
+.px-tile.on { border-color: var(--accent); box-shadow: 3px 3px 0 var(--accent); }
+
+.px-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .px-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* a stage is a framed box; .grid adds a pixel-grid texture (an 8 px tile, one line per edge, no gradient) */
+.px-stage {
+  position: relative;
+  overflow: hidden;
+  background: #1b2340;
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 #000;
+  min-height: 240px;
+}
+.px-stage.grid {
+  background-color: #1b2340;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='1' height='8' fill='%232a3561'/%3E%3Crect width='8' height='1' fill='%232a3561'/%3E%3C/svg%3E");
+}
+.px-stage.light { background: #e9e4d0; }
+.px-stage.dark { background: #0b0f1d; }
+.px-stage.green { background: #1f8f4e; }
+
+/* ------------------------------------------------------------- tabs, messages, text */
+.px-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 3px solid var(--line);
+  margin-bottom: 16px;
+}
+.px-tabs > button {
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -3px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.px-tabs > button:hover { color: var(--text); }
+.px-tabs > button.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+.px-msg {
+  background: var(--panel2);
+  border: 2px solid var(--line);
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.px-msg.err { border-color: var(--err); color: var(--err); }
+.px-msg.warn { border-color: var(--warn); color: var(--warn); }
+.px-msg.ok { border-color: var(--ok); color: var(--ok); }
+
+.px-muted { color: var(--muted); font-size: 12px; }
+
+.px-caption {
+  background: #080b17;
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 #000;
+  padding: 12px 14px;
+  min-height: 52px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.px-sec {
+  margin: 26px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 3px solid var(--line);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------- home view */
+.home-lede { margin: 0; color: var(--muted); max-width: 72ch; }
+.home-stat-num { font-size: 30px; font-weight: 700; line-height: 1.1; color: var(--accent); }
+.home-stat-label {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.home-crew {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.home-crew-tile { padding: 10px; }
+.home-crew-stage { height: 228px; min-height: 0; margin-bottom: 8px; }
+.home-crew-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.home-crew-sub { font-size: 12px; color: var(--muted); }
+
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0;
+}
+.home-card h3 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.home-card .px-btn { align-self: flex-start; margin-top: auto; }

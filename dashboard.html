@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Explainer Studio</title>
+<link rel="stylesheet" href="dashboard/dashboard.css">
+</head>
+<body>
+<!-- characters: the six survivors; a skin that is missing is skipped (onerror) -->
+<script src="character/parts.js"></script>
+<script src="character/skin-penguin.js" onerror="void 0"></script>
+<script src="character/skin-frog.js" onerror="void 0"></script>
+<script src="character/skin-dog.js" onerror="void 0"></script>
+<script src="character/skin-whisker.js" onerror="void 0"></script>
+<script src="character/skin-rabbit.js" onerror="void 0"></script>
+<script src="character/skin-bear.js" onerror="void 0"></script>
+<script src="character/character.js"></script>
+
+<!-- presentation layer -->
+<script src="presentation/pixel.js"></script>
+<script src="presentation/registry.js"></script>
+<script src="presentation/font.js"></script>
+<script src="presentation/ui.js"></script>
+<script src="presentation/backgrounds.js"></script>
+<script src="presentation/props.js"></script>
+<script src="presentation/audio.js" onerror="void 0"></script>
+<script src="presentation/engine.js"></script>
+<script src="presentation/scenarios/web-trip.js" onerror="void 0"></script>
+<script src="presentation/scenarios/sky-blue.js" onerror="void 0"></script>
+<script src="presentation/scenarios/how-claude-works.js" onerror="void 0"></script>
+<script src="presentation/scenarios/code-review-chat.js" onerror="void 0"></script>
+
+<!-- dashboard shell, then the views (each one registers itself; a missing view shows as "not loaded") -->
+<script src="dashboard/shell.js"></script>
+<script src="dashboard/views/home.js" onerror="void 0"></script>
+<script src="dashboard/views/characters.js" onerror="void 0"></script>
+<script src="dashboard/views/scenes.js" onerror="void 0"></script>
+<script src="dashboard/views/presentations.js" onerror="void 0"></script>
+<script src="dashboard/views/assets.js" onerror="void 0"></script>
+
+<script>
+  (function () {
+    'use strict';
+    if (window.Dashboard && typeof Dashboard.start === 'function') {
+      Dashboard.start();
+      return;
+    }
+    var m = document.createElement('div');
+    m.className = 'px-msg err';
+    m.textContent = 'dashboard/shell.js did not load, so the dashboard cannot start.';
+    document.body.append(m);
+  })();
+</script>
+</body>
+</html>
