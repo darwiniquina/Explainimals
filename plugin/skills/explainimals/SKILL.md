@@ -55,15 +55,18 @@ On request it also makes an MP4 video of the explainer, with sound, using `scrip
    offline, and encodes a 1920x1080 H.264 + AAC `.mp4` with ffmpeg. You only run commands; do not read the script,
    write frames or audio yourself, or re-run it to "check" it.
    (a) Check the tools: `python <skill>/scripts/export_mp4.py --check` (if `python` is not found, try `python3` or
-   `py`). It exits 0 when ready.
+   `py -3`, and use that same interpreter for every command below). It exits 0 when ready and 2 when something is
+   missing, and it names each missing piece. Once `playwright` is installed it also starts a browser, so it reports a
+   missing Chrome or Edge too.
    (b) If something is missing, say what, and ask before installing anything: `pip install playwright imageio-ffmpeg`
    (a few tens of MB, needs internet), and `python -m playwright install chromium` only when neither Chrome nor
-   Edge is installed. Install only after a yes. If they say no, stop and leave the `.html` as the result.
-   (c) Export: `python <skill>/scripts/export_mp4.py explainimals-output/<topic-slug>.html`. It writes
-   `explainimals-output/<topic-slug>.mp4` and takes about as long as the presentation plays; run it in the
+   Edge is installed. The user's yes to the MP4 does not cover the install: ask separately. Install only after a yes. If they say no, stop and leave the `.html` as the result.
+   (c) Export: `python <skill>/scripts/export_mp4.py explainimals-output/<topic-slug>.html` (use the full path when the
+   `.html` is elsewhere). It writes
+   `explainimals-output/<topic-slug>.mp4` and takes a minute or two for a typical explainer; run it in the
    background if your tool times out, and wait for it to finish. Use `--width 960` when they want a smaller or
    quicker file, and `--no-audio` for a silent video.
-   (d) Report the `.mp4` path, its length and size (the script prints them). If it fails, show its last error line
+   (d) Report the `.mp4` path, its length and size (copy them from the script's last line). If it fails, show its last error line
    and, for a missing tool, repeat (b). `references/mp4.md` has the options and troubleshooting.
 
 ## Revisions
