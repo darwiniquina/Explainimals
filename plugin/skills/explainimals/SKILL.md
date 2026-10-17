@@ -12,6 +12,7 @@ speech bubbles, with props, backgrounds, camera moves and optional generated sou
 `scripts/validate.js` checks it and `scripts/build.js` packs the player and the scenario into one file.
 `<skill>` below means this skill folder; `references/` and `scripts/` are inside it. Run the scripts by their
 full path from any folder, for example `node <skill>/scripts/validate.js my-topic.json`. Needs Node 18 or newer.
+On request it also makes an MP4 video of the explainer, with sound, using `scripts/export_mp4.py` (a Python script, step 8).
 
 ## Workflow
 
@@ -45,15 +46,32 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
    full path of the `.html`, with a reminder to open it
    in a browser and press **Play** (sound stays off until then); (d) ONE question: what should change? Offer a few
    concrete options, such as shorter or longer, a different cast or tone, more or fewer jokes, different music, no
-   camera moves, or fixing a specific slide (they can say "slide 4"). Then wait. Do not rebuild until they answer.
+   camera moves, or fixing a specific slide (they can say "slide 4"). Add one more option to the same question: "or
+   export it as an MP4 video" (step 8). Then wait. Do not rebuild until they answer.
    Follow "Revisions" below.
+8. **MP4 (only when the user wants a video file).** Offer it in the step 7 question; if the user asked for an MP4 or
+   a video file up front, do this right after the build and report both files. A script does all the work, not you:
+   it plays the finished `.html` in a headless browser frame by frame, renders the same music, effects and voices
+   offline, and encodes a 1920x1080 H.264 + AAC `.mp4` with ffmpeg. You only run commands; do not read the script,
+   write frames or audio yourself, or re-run it to "check" it.
+   (a) Check the tools: `python <skill>/scripts/export_mp4.py --check` (if `python` is not found, try `python3` or
+   `py`). It exits 0 when ready.
+   (b) If something is missing, say what, and ask before installing anything: `pip install playwright imageio-ffmpeg`
+   (a few tens of MB, needs internet), and `python -m playwright install chromium` only when neither Chrome nor
+   Edge is installed. Install only after a yes. If they say no, stop and leave the `.html` as the result.
+   (c) Export: `python <skill>/scripts/export_mp4.py explainimals-output/<topic-slug>.html`. It writes
+   `explainimals-output/<topic-slug>.mp4` and takes about as long as the presentation plays; run it in the
+   background if your tool times out, and wait for it to finish. Use `--width 960` when they want a smaller or
+   quicker file, and `--no-audio` for a silent video.
+   (d) Report the `.mp4` path, its length and size (the script prints them). If it fails, show its last error line
+   and, for a missing tool, repeat (b). `references/mp4.md` has the options and troubleshooting.
 
 ## Revisions
 
 When the user asks for a change, edit the existing `explainimals-output/<topic-slug>.json` in place; do not
 rewrite the scenario from scratch, and change only what they asked for. Run validate.js again (same rules as step
-5), then build.js to the same `.html` path so there is always one current file. Say in one line what changed, then
-ask again whether anything else needs changing. Stop only when the user says it is done ("looks good", "that's
+5), then build.js to the same `.html` path so there is always one current file. Say in one line what changed, then ask again whether anything else needs changing. If an `.mp4` of the old version
+exists, also say it is out of date and offer to export it again. Stop only when the user says it is done ("looks good", "that's
 it"). If a request conflicts with a hard rule (for example three characters on one slide), say so and offer the
 nearest option that fits. Slide numbers the user gives are 1-based and count each `dialogue` line as its own slide.
 
@@ -86,6 +104,7 @@ nearest option that fits. Slide numbers the user gives are 1-based and count eac
 - `references/scenario.md`: the full format (every field, camera, motion, dialogue, validation). Read when a field
   or option is unclear. Do not paste it into the reply.
 - `references/audio.md`: music, sound effects and voices. Read only for sound or voice requests.
+- `references/mp4.md`: the MP4 export script: needs, options, how it works, troubleshooting. Read only for video requests.
 - `references/examples/*.js`: finished scenarios (JS wrappers around the same object). Read
   `code-review-chat.js` for dialogue and `how-claude-works-cinematic.js` for camera and motion.
 - `references/contract.md`: art and engine rules for developers changing the runtime. Not needed to write a scenario.

@@ -46,6 +46,7 @@ Any AI that can write JSON and run Node (Claude, Codex or others) can drive it, 
 - **A thumbnail strip** to jump between slides, plus keys for play, replay, sound, fullscreen and previous or next slide.
 - **Length:** a typical explainer runs 45 to 60 seconds of animation. Ask for longer and you get more.
 - **One self-contained `.html` file**, with sound off until you press Play.
+- **An optional MP4 video with sound**, rendered by a script, so the AI spends almost no tokens on it.
 - **A skill for Claude Code, Claude.ai and the Claude desktop app, and for Codex.**
 
 Pixel art is the one visual style: every character, background, prop and UI piece is drawn from whole pixels. It is plain HTML/JS with no build step and no runtime dependencies.
@@ -146,10 +147,29 @@ Before it builds, your AI shows a short plan (the takeaway, the cast and the sli
 | Cat | careful checker: verifies and reviews |
 | Frog | comic reactor: jokes, gets startled |
 
-Limits (v0.2.5): a fixed 240 x 135 pixel stage; 6 characters, 42 props and 11 backgrounds (the generated
+Limits (v0.2.6): a fixed 240 x 135 pixel stage; 6 characters, 42 props and 11 backgrounds (the generated
 `plugin/skills/explainimals/references/catalog.md` lists them); at most 2 characters on screen per slide; a crowded
 slide falls back to a bottom caption, hidden prop labels or dropped props, which the validator reports; the output is
-an HTML file, not a video file.
+an HTML file, with an optional MP4 export (below).
+
+### Export to MP4
+
+Ask for an MP4, or pick it when the build is done, and you get a video file with sound next to the `.html`. A script
+makes it, not the AI, so it costs almost no tokens, and the picture and sound match the HTML exactly. It needs Python
+3.8 or newer, Google Chrome or Microsoft Edge (or `python -m playwright install chromium`), and ffmpeg (on PATH, or from
+the `imageio-ffmpeg` package). Install the two Python packages once:
+
+```bash
+pip install playwright imageio-ffmpeg
+```
+
+To export by hand, run this after the build (use `python3` or `py -3` if `python` is not found):
+
+```bash
+python plugin/skills/explainimals/scripts/export_mp4.py explainimals-output/<topic>.html
+```
+
+Options and troubleshooting are in [references/mp4.md](plugin/skills/explainimals/references/mp4.md).
 
 ## Changing the skill
 
@@ -316,4 +336,4 @@ art rule that allows integer zoom only is in `presentation/CONTRACT.md`.
   character actions are already driven by time, so they should render the same way.
 - Check the new camera moves and emotes in `presentation/assets-preview.html` before using them in a long scenario.
 - Done: the scenario authoring guide, including the camera and motion advice, is packaged as the Explainimals skill in `plugin/` (see "Install").
-- Next for the skill: more props (moon, bed, clock, battery, food), a video export, and a license.
+- Next for the skill: more props (moon, bed, clock, battery, food) and a license.
