@@ -59,6 +59,39 @@
   .bar input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
   .clock { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 9.5em; text-align: right; }
 
+  /* slide thumbnails: one button per slide in a single row that scrolls sideways (the strip, not the page) */
+  .thumbs {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 4px 4px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .thumb {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .thumb canvas {
+    display: block;
+    width: 112px;
+    height: 63px;
+    image-rendering: pixelated;
+    background: var(--bg);
+  }
+  .thumb[aria-current="true"] { border-color: var(--accent); color: var(--text); }
+
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
   button, select {
     font: inherit;
@@ -112,6 +145,8 @@
       <span id="clock" class="clock">0.0 / 0.0 s</span>
     </div>
 
+    <div id="thumbs" class="thumbs" role="group" aria-label="Slides" hidden></div>
+
     <div class="controls">
       <button id="play" class="primary" type="button" title="Play or pause (Space)">Play</button>
       <button id="replay" type="button" title="Start again from the first slide (R)">Replay</button>
@@ -126,7 +161,7 @@
       <button id="fs" type="button" title="Fullscreen (F)">Fullscreen</button>
     </div>
 
-    <p class="hint">Space play/pause | R replay | M sound | F fullscreen | Left/Right previous/next slide</p>
+    <p class="hint">Space play/pause | R replay | M sound | F fullscreen | Left/Right previous/next slide | Click a thumbnail to jump to a slide</p>
   </div>
 
   <section id="warnings" class="panel warn" hidden>
@@ -216,9 +251,19 @@
     play();
   }
 
+  // a slide's first frame is still behind its transition cover (up to 0.7 s), so a paused jump would show an
+  // empty stage: step past the transition. Playing needs no help, time just carries on.
+  function settle() {
+    if (!player || player.playing || !player.slide) return;
+    var dur = player.sc.slides[Math.max(0, player.state().slide)].duration;
+    player.acc = 0;
+    player.step(Math.max(0, Math.min(0.8, dur - 0.05)));
+  }
+
   function step(dir) {
     if (!player || !player.sc) return;
     if (dir < 0) player.prev(); else player.next();
+    settle();
     update();
   }
 
@@ -286,6 +331,151 @@
     clock.textContent = s.time.toFixed(1) + ' / ' + s.total.toFixed(1) + ' s';
     if (!dragging) scrub.value = String(Math.round((s.time / Math.max(0.001, s.total)) * 1000));
     setPlaying(player.playing);
+    if (idx !== thumbLast) { thumbLast = idx; markThumb(idx); }   // only when the slide changed
+  }
+
+  // ----------------------------------------------------------------- thumbnails
+  // A row of slide buttons, each with a 240 x 135 canvas. A second, off-screen Pres.Player is stepped to a
+  // moment of each slide while paused (paused steps draw frames and play nothing), and the frame is copied
+  // onto the canvas. The stage is DOM and SVG, not a canvas, so a frame is copied by drawing the stage
+  // serialised into an SVG foreignObject. Any failure removes the strip and leaves the main player alone.
+  var THUMB_W = 240, THUMB_H = 135, THUMB_FILL = '#0b0912';
+  var thumbs = null;                      // { strip, items: [{ btn, canvas }] } while the strip exists
+  var thumbLast = -1;                     // slide index the strip last highlighted
+
+  function removeThumbs() {
+    var strip = $('thumbs');
+    thumbs = null;
+    if (strip) strip.remove();
+  }
+
+  function buildThumbs(scenario) {
+    var strip = $('thumbs');
+    if (!strip || !player || !player.sc) return;
+    var slides = player.sc.slides;
+    if (slides.length < 2) return;        // one slide: nothing to jump between, the strip stays hidden
+    try {
+      var items = slides.map(function (slide, i) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'thumb';
+        btn.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        btn.title = slide.id;
+        var cv = document.createElement('canvas');
+        cv.width = THUMB_W;
+        cv.height = THUMB_H;
+        var ctx = cv.getContext('2d');
+        if (ctx) { ctx.fillStyle = THUMB_FILL; ctx.fillRect(0, 0, THUMB_W, THUMB_H); }
+        var num = document.createElement('span');
+        num.className = 'thumb-n';
+        num.textContent = String(i + 1);
+        btn.append(cv, num);
+        btn.addEventListener('click', function () { gotoSlide(i); });
+        strip.append(btn);
+        return { btn: btn, canvas: cv };
+      });
+      thumbs = { strip: strip, items: items };
+      thumbLast = -1;
+      strip.hidden = false;
+      renderThumbs(scenario, thumbs);
+    } catch (e) {
+      removeThumbs();
+    }
+  }
+
+  // one slide per timer tick, so the page paints between slides
+  function renderThumbs(scenario, run) {
+    var off = document.createElement('div');
+    off.setAttribute('aria-hidden', 'true');
+    off.style.cssText = 'position:absolute;left:-9999px;top:0;width:240px;';   // 240px: the engine lays out at 1x
+    var box = document.createElement('div');
+    off.append(box);
+    document.body.append(off);
+
+    var tp = null, i = 0;
+    function finish() {
+      if (tp && tp.ro) tp.ro.disconnect();   // the engine's only observer; it has no other global state
+      tp = null;
+      off.remove();
+    }
+    function dropStrip() {
+      finish();
+      if (thumbs === run) removeThumbs();
+    }
+
+    try {
+      tp = new P.Player(box, { loop: false, audio: false });
+      tp.load(scenario);
+    } catch (e) {
+      dropStrip();
+      return;
+    }
+
+    function one() {
+      if (thumbs !== run) { finish(); return; }          // the strip went away meanwhile
+      if (i >= run.items.length) { finish(); return; }
+      var idx = i++;
+      try {
+        tp.seek(idx);                                    // first frame of the slide
+        var slide = tp.sc.slides[idx];
+        // about 70% in, so typed-out speech is revealed; later if the typewriter is still going then
+        var at = slide.duration * 0.7;
+        var ty = tp.L && tp.L.bubble && tp.L.bubble.type;
+        if (ty) at = Math.max(at, ty.T0 + ty.typeDur + 0.1);
+        at = Math.min(at, slide.duration - 0.05);
+        tp.acc = 0;
+        tp.step(at);                                     // paused: renders the frames, plays no sound
+        snapshot(tp.stage, function (img) {
+          if (thumbs !== run) { finish(); return; }
+          try {
+            if (!img) throw new Error('no frame');
+            var ctx = run.items[idx].canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, THUMB_W, THUMB_H);
+          } catch (e) {
+            dropStrip();
+            return;
+          }
+          setTimeout(one, 0);
+        });
+      } catch (e) {
+        dropStrip();
+      }
+    }
+    setTimeout(one, 0);
+  }
+
+  // the stage (DOM and SVG, one element) as an image: a copy of it inside an SVG foreignObject
+  function snapshot(stageEl, done) {
+    var copy = stageEl.cloneNode(true);             // the serialiser adds the XHTML namespace to it
+    copy.style.background = THUMB_FILL;
+    var markup = new XMLSerializer().serializeToString(copy);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + THUMB_W + '" height="' + THUMB_H + '">' +
+      '<foreignObject x="0" y="0" width="' + THUMB_W + '" height="' + THUMB_H + '">' + markup + '</foreignObject></svg>';
+    var img = new Image(THUMB_W, THUMB_H);
+    img.onload = function () { done(img); };
+    img.onerror = function () { done(null); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  // the current slide's thumbnail is marked, and the strip scrolls (scrollLeft, so the page does not move)
+  function markThumb(idx) {
+    if (!thumbs || !thumbs.items[idx]) return;
+    thumbs.items.forEach(function (it, j) {
+      if (j === idx) it.btn.setAttribute('aria-current', 'true');
+      else it.btn.removeAttribute('aria-current');
+    });
+    var strip = thumbs.strip, btn = thumbs.items[idx].btn;
+    strip.scrollLeft = btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2;
+  }
+
+  // a click jumps there. While playing it keeps playing from the new slide; while paused it shows that
+  // slide (just past its transition) and stays paused (seek draws silently: cues and voice play only while playing)
+  function gotoSlide(idx) {
+    if (!player || !player.sc) return;
+    player.seek(idx);
+    player.acc = 0;
+    settle();
+    update();
   }
 
   // ----------------------------------------------------------------- keyboard
@@ -391,6 +581,9 @@
     document.addEventListener('keydown', onKey);
     document.addEventListener('fullscreenchange', function () { refit(); onFullscreenChange(); });
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    // the thumbnail strip is optional: if it cannot be built, it is removed and playback is unaffected
+    try { buildThumbs(scenario); } catch (e) { removeThumbs(); }
 
     applySpeed();
     update();
