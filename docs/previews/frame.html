@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Explainimals preview frame</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0b0912; overflow: hidden; }
+  body { width: 960px; height: 540px; }
+  /* the stage box is the Player's parent: its 960 px width gives an integer scale of 4 (240 x 135 -> 960 x 540) */
+  #stagebox { width: 960px; height: 540px; }
+  #stage { position: relative; }
+</style>
+</head>
+<body>
+<div id="stagebox"><div id="stage"></div></div>
+
+<!-- runtime: same files and order as plugin/skills/explainimals/scripts/build.js (RUNTIME_FILES) -->
+<script src="../../plugin/skills/explainimals/runtime/character/parts.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-penguin.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-frog.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-dog.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-whisker.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-rabbit.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/skin-bear.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/character/character.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/pixel.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/registry.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/font.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/ui.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/backgrounds.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/props.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/emotes.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/audio.js"></script>
+<script src="../../plugin/skills/explainimals/runtime/presentation/engine.js"></script>
+
+<!-- example scenarios: each registers itself into Pres.scenarios -->
+<script src="../../plugin/skills/explainimals/references/examples/how-claude-works-cinematic.js"></script>
+<script src="../../plugin/skills/explainimals/references/examples/sky-blue.js"></script>
+<script src="../../plugin/skills/explainimals/references/examples/code-review-chat.js"></script>
+
+<!-- sample scenario (samples/sleep-recharges-brain.json), inlined as JSON because file:// pages cannot fetch -->
+<script type="application/json" id="sleep-json">
+{
+  "title": "Why sleep recharges your brain",
+  "music": "playful",
+  "defaults": { "background": "home", "skin": "penguin" },
+  "slides": [
+    {
+      "id": "title",
+      "background": "home",
+      "sfx": "appear",
+      "duration": 4,
+      "title": { "text": "Why sleep recharges your brain", "subtitle": "a pixel explainer" },
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "happy", "pose": "wave", "enter": "hop" }
+      ]
+    },
+    {
+      "id": "night",
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "happy", "pose": "point_right", "gaze": "props",
+          "emote": "zzz", "exit": "slide",
+          "say": "At night, your brain switches to its repair shift." }
+      ],
+      "props": ["moon", "brain"]
+    },
+    {
+      "id": "office-problem",
+      "background": "office",
+      "music": "tense",
+      "dialogue": {
+        "cast": { "left": "dog", "right": "bear" },
+        "lines": [
+          { "who": "left", "say": "Every afternoon I hit a wall. My brain feels like a flat battery.",
+            "expression": "sad", "pose": "shrug", "emote": "sweat", "gaze": "other", "enter": "hop",
+            "props": ["clock", "battery"], "sfx": "error", "react_emote": "question" },
+          { "who": "right", "say": "Sleep is when your brain clears out the day's waste.",
+            "expression": "determined", "pose": "point_down", "emote": "bulb", "gaze": "other",
+            "props": ["arrow-down", "bin"], "exit": "slide" }
+        ]
+      }
+    },
+    {
+      "id": "lab-fix",
+      "background": "lab",
+      "music": "upbeat",
+      "sfx": "confirm",
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "joy", "pose": "cheer", "enter": "pop",
+          "action": "hop", "emote": "sparkle",
+          "say": "Good news: a steady bedtime lets you finish full sleep cycles." }
+      ],
+      "props": ["calendar", "cycle"]
+    },
+    {
+      "id": "lab-memory",
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "happy", "pose": "idle", "gaze": "other" },
+        { "skin": "bear", "at": "right", "expression": "determined", "pose": "point_up", "enter": "slide",
+          "emote": "bulb", "exit": "slide",
+          "say": "Each cycle files new memories away, so you remember more tomorrow." }
+      ],
+      "props": ["book", "arrow-up"]
+    },
+    {
+      "id": "city-recap",
+      "background": "city",
+      "music": "calm",
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "happy", "pose": "present",
+          "say": "Sleep well, and your brain wakes up ready." }
+      ],
+      "duration": 8,
+      "panel": { "title": "Recap", "bullets": ["Night is repair time", "Sleep clears waste", "Cycles file memories"] }
+    },
+    {
+      "id": "city-close",
+      "duration": 7,
+      "characters": [
+        { "skin": "penguin", "at": "left", "expression": "joy", "pose": "cheer", "emote": "sparkle",
+          "action": "hop", "say": "Good night! Your brain will thank you tomorrow." }
+      ],
+      "props": ["trophy"]
+    }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+  // ?demo=<scenario id>&slide=<index>&t=<seconds>: the stage is shown at slide start, then stepped t seconds while paused
+  function report(msg) { document.body.setAttribute('data-status', msg); }
+  try {
+    var q = new URLSearchParams(location.search);
+    var id = q.get('demo') || 'sky-blue';
+    var slide = parseInt(q.get('slide') || '0', 10);
+    var t = parseFloat(q.get('t') || '0');
+    var P = window.Pres;
+    if (!P.scenarios[id] && id === 'sleep-recharges-brain') {
+      var raw = document.getElementById('sleep-json').textContent.replace(/^﻿/, '');
+      P.scenarios[id] = JSON.parse(raw);
+    }
+    var sc = P.scenarios[id];
+    if (!sc) throw new Error('unknown demo ' + id);
+    var player = new P.Player(document.getElementById('stage'), { audio: false });
+    player.load(sc);
+    player.seek(slide);
+    if (t > 0) player.step(t);
+    var ty = player.L && player.L.bubble && player.L.bubble.type;
+    report(JSON.stringify({
+      demo: id, slide: player.slideIndex, id: player.slide.id, time: +player.time.toFixed(2),
+      end: +(player.slide.start + player.slide.duration).toFixed(2), k: player.k,
+      typed: ty ? player._typedNow() : -1, of: ty ? ty.chars.length : -1
+    }));
+  } catch (e) {
+    report('ERROR ' + e.message);
+  }
+})();
+</script>
+</body>
+</html>

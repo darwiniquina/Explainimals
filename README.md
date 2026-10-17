@@ -52,6 +52,35 @@ Pixel art is the one visual style: every character, background, prop and UI piec
 
 This repo holds both the skill (`plugin/`) and the studio used to build and tune it (everything else).
 
+## Live demos
+
+See it before you install it. Each demo is one self-contained HTML file; click a picture to open it in your browser and press **Play** (no install, no sign-in): **[all demos](https://darwiniquina.github.io/Explainimals/)**.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://darwiniquina.github.io/Explainimals/sleep-recharges-brain.html"><img src="docs/previews/sleep-recharges-brain.png" alt="Why sleep recharges your brain" width="100%"></a><br>
+      <b>Why sleep recharges your brain</b><br><sub>new backgrounds, props and a music arc</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://darwiniquina.github.io/Explainimals/how-claude-works-cinematic.html"><img src="docs/previews/how-claude-works-cinematic.png" alt="How Claude works (cinematic)" width="100%"></a><br>
+      <b>How Claude works (cinematic)</b><br><sub>camera moves, emotes and character motion</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://darwiniquina.github.io/Explainimals/sky-blue.html"><img src="docs/previews/sky-blue.png" alt="Why is the sky blue?" width="100%"></a><br>
+      <b>Why is the sky blue?</b><br><sub>a panel, props and two characters</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://darwiniquina.github.io/Explainimals/code-review-chat.html"><img src="docs/previews/code-review-chat.png" alt="The code review" width="100%"></a><br>
+      <b>The code review</b><br><sub>a conversation with all six animals</sub>
+    </td>
+  </tr>
+</table>
+
+The demos are rebuilt from `plugin/skills/explainimals/references/examples` and `samples/` on every push to `main` (`scripts/build-site.js`, deployed by `.github/workflows/pages.yml`).
+
 ## Install
 
 Paste one of these prompts into your AI agent. It installs the skill for you, shows the plan and asks you once before it changes anything.
