@@ -2,7 +2,7 @@
 
 ## Rules for you, the agent
 
-- Before you change anything, tell the user exactly what you are about to do (the commands or the copy). Wait for a clear yes.
+- Before you change anything, tell the user exactly what you are about to do (the commands or the copy) in ONE message, and ask once. Wait for a clear yes. Do not ask again for each step. Ask again only before replacing or deleting something that already exists.
 - Change only the user's own plugin list or skills folder. Do not edit config files by hand. The `claude plugin` commands update Claude Code's own settings themselves; that is expected.
 - Use no sudo and no admin rights.
 - Download nothing except from github.com/darwiniquina/Explainimals.
@@ -24,7 +24,7 @@ Pick the first line that is true:
 Run `node --version`. It must print 18 or higher.
 
 - Node.js is needed to USE the skill, not to install it. The install steps below do not need it.
-- If Node is missing or older than 18, tell the user and ask whether to continue anyway. Continue only on a yes.
+- If Node is missing or older than 18, do not stop and do not ask a separate question. Add one line to your single plan message (see the Rules): the user will need Node 18 or newer to make explainers.
 
 ## A. Claude Code
 
@@ -47,30 +47,32 @@ Run `node --version`. It must print 18 or higher.
 
 ## B. Codex
 
-1. Ask the user: this project only, or all projects? The default is all projects, which is `~/.agents/skills`. This project only is `<project>/.agents/skills`.
-2. Get the files:
-   - If the current folder is already a clone of this repo (it contains `plugin/skills/explainimals/SKILL.md`), use it.
-   - Otherwise run `git clone --depth 1 https://github.com/darwiniquina/Explainimals` inside a new temp folder that you create. You may delete that temp folder yourself when you are done.
-3. If `<skills folder>/explainimals` already exists, tell the user and ask before replacing it. On a yes, delete that old folder first, so files removed in newer versions do not stay behind.
-4. Tell the user the source and target paths and wait for a yes. Then copy the contents of `plugin/skills/explainimals` into `<skills folder>/explainimals`, so the result is `<skills folder>/explainimals/SKILL.md`. Do not nest it twice.
+Codex ships a built-in `skill-installer` skill. It downloads this repo's archive from GitHub to a temporary folder and installs only the skill folder into `~/.codex/skills/explainimals` (or `$CODEX_HOME/skills/explainimals` if `CODEX_HOME` is set). If the download fails it falls back to a git sparse checkout. It aborts if the destination folder already exists.
 
-   PowerShell (`<clone>` is the clone path):
+1. Tell the user the whole plan in ONE message and ask once: install `explainimals` from `https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals` into `~/.codex/skills/explainimals` (all projects), using the command in step 2. Say that this needs network access and permission to write to the Codex skills folder, so a sandboxed Codex will ask for that approval once. Mention that a project-only install into `<project>/.agents/skills` is possible if they want it, and add the Node line from Step 2 if it applies. Wait for a yes. Do not ask about the scope or each step.
+2. Run the installer. Prefer invoking Codex's `skill-installer` skill with that URL. Otherwise run the script directly. If you are sandboxed, use the approval you named in the plan; do not ask again.
+   - PowerShell: `python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
+   - bash: `python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
+   - If `python` is not found, try `python3` or `py`. For one project only, add `--dest <project>/.agents/skills`.
+3. If the `explainimals` folder already exists at the destination, the installer aborts. Tell the user and ask once. On a yes, delete only that old `explainimals` folder, then run step 2 again.
+4. Verify that `<dest>/explainimals/SKILL.md` exists directly inside it, and that the folder holds 34 files. If not, stop and report.
+5. Tell the user to restart Codex, run `/skills` and check that `explainimals` is listed, then try `$explainimals make an explainer about DNS`. If it is not listed after a restart, stop and report. Offer to read the OpenAI Codex skills docs (https://developers.openai.com/codex/skills), and do not guess other folders.
+6. Fallback. If the command is blocked by a sandbox policy, rejected, or fails (network error, Python missing): STOP. Do not try other ways around the block, and do not leave temp files. Tell the user what was blocked (the exact message), then give them exactly ONE of these lines to paste into their own terminal, chosen for their shell, and say that it installs into `~/.codex/skills/explainimals` and that they must restart Codex afterwards (if an `explainimals` folder is already there, delete it first):
+   - PowerShell: `python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
+   - bash: `python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py --url https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals`
+   - If `python` is not found, use `python3` or `py`. If the `.system/skill-installer` folder does not exist (an older Codex), use the last resort below.
+   - Last resort, with no Python at all (agent sandboxes often block this too; needs `git`): ask the user to run these in their own terminal, which clones the repo and copies the skill into `~/.agents/skills`. If the clone folder already exists, delete it first. PowerShell:
    ```powershell
+   git clone --depth 1 https://github.com/darwiniquina/Explainimals "$HOME\explainimals-clone"
    New-Item -ItemType Directory -Force "$HOME\.agents\skills\explainimals" | Out-Null
-   Copy-Item -Recurse -Force "<clone>\plugin\skills\explainimals\*" "$HOME\.agents\skills\explainimals\"
+   Copy-Item -Recurse -Force "$HOME\explainimals-clone\plugin\skills\explainimals\*" "$HOME\.agents\skills\explainimals\"
+   Remove-Item -Recurse -Force "$HOME\explainimals-clone"
    ```
-
-   bash (`<clone>` is the clone path, forward slashes):
+   bash:
    ```bash
-   mkdir -p ~/.agents/skills/explainimals && cp -r <clone>/plugin/skills/explainimals/. ~/.agents/skills/explainimals/
+   git clone --depth 1 https://github.com/darwiniquina/Explainimals ~/explainimals-clone && mkdir -p ~/.agents/skills/explainimals && cp -r ~/explainimals-clone/plugin/skills/explainimals/. ~/.agents/skills/explainimals/ && rm -r ~/explainimals-clone
    ```
-
-5. Verify that `<skills folder>/explainimals/SKILL.md` exists directly inside it, and that the folder holds 34 files. If not, stop and report.
-6. Delete the temp clone if you made one.
-7. Tell the user to restart Codex, then run `/skills` and check that `explainimals` is listed. Run it with `$explainimals`.
-8. If it is not listed after a restart, stop and report. The skill locations are described in the OpenAI Codex skills docs (https://developers.openai.com/codex/skills). Offer to read them, and do not guess other folders.
-
-Unverified alternative: Codex ships a `skill-installer` skill that can install from a GitHub repo path. Its exact syntax was not checked. Use it only if the user asks, and verify the result as in step 5.
+   Check that `SKILL.md` sits directly inside `~/.agents/skills/explainimals` (do not nest it twice), then restart Codex and run `/skills`.
 
 ## C. No shell (Claude.ai, Claude desktop chat)
 
@@ -87,7 +89,7 @@ The README section for this is "Claude.ai and the Claude desktop app".
 
 ## D. Other agents
 
-Do the same copy as in B, into that agent's skills folder, so that `explainimals/SKILL.md` ends up inside it. Ask the user where that folder is. Do not guess the path.
+Do the same copy as the last-resort commands in B6 (clone, then copy `plugin/skills/explainimals`), into that agent's skills folder, so that `explainimals/SKILL.md` ends up inside it. Ask the user where that folder is. Do not guess the path.
 
 ## Step 3: confirm
 
@@ -113,13 +115,14 @@ Ask the user before you delete anything.
   claude plugin marketplace remove explainimals
   ```
   Claude Code may keep an inert cached copy of the plugin folder for a while. That is normal.
-- Codex or another agent, PowerShell: `Remove-Item -Recurse -Force "$HOME\.agents\skills\explainimals"`
-- Codex or another agent, bash: `rm -r ~/.agents/skills/explainimals`
+- Codex, PowerShell: `Remove-Item -Recurse -Force "$HOME\.codex\skills\explainimals"`, bash: `rm -r ~/.codex/skills/explainimals`. If you also installed it into `~/.agents/skills` or `<project>/.agents/skills`, remove that `explainimals` folder the same way.
+- Another agent, PowerShell: `Remove-Item -Recurse -Force "$HOME\.agents\skills\explainimals"`
+- Another agent, bash: `rm -r ~/.agents/skills/explainimals`
 - Claude.ai: delete the skill in the Skills section of settings.
 
 ## What this installs
 
-- Only the `plugin/` folder of the repo: about 35 files, about 400 KB (34 files in the skill folder that Codex and other agents get). That is the skill (`SKILL.md`, `references/`, `runtime/`, `scripts/`, `assets/`) and, for Claude Code, its plugin manifest.
+- Only the `plugin/` folder of the repo: about 35 files, about 400 KB (the 34-file skill folder; for Codex it lands in `~/.codex/skills/explainimals`). That is the skill (`SKILL.md`, `references/`, `runtime/`, `scripts/`, `assets/`) and, for Claude Code, its plugin manifest.
 - Not installed: the studio, the dashboard and the source art.
 - Nothing runs in the background. The skill runs only when the user asks for an explainer.
 - No network calls. The skill's scripts and the pages it builds send nothing anywhere.
