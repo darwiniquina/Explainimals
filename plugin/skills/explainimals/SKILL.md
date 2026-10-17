@@ -29,8 +29,20 @@ full path from any folder, for example `node <skill>/scripts/validate.js my-topi
 5. **Build:** `node <skill>/scripts/build.js explainimals-output/<topic-slug>.json -o explainimals-output/<topic-slug>.html`.
    Give the user the full path of the `.html`, and tell them to open it in a browser and press **Play**.
    Sound stays off until Play is pressed.
-6. **Offer tweaks**: shorter or longer, another cast, another music mood, no camera moves. Rebuild only when the
-   user asks.
+6. **Ask for revisions.** Do not end on the file path alone. After the path, give a two-line summary (slide
+   count, length in seconds, cast, music mood) and ask ONE question: what should change? Offer a few concrete
+   options, such as shorter or longer, a different cast or tone, more or fewer jokes, different music, no camera
+   moves, or fixing a specific slide (they can say "slide 4"). Then wait. Do not rebuild until they answer.
+   Follow "Revisions" below.
+
+## Revisions
+
+When the user asks for a change, edit the existing `explainimals-output/<topic-slug>.json` in place; do not
+rewrite the scenario from scratch, and change only what they asked for. Run validate.js again (same rules as step
+4), then build.js to the same `.html` path so there is always one current file. Say in one line what changed, then
+ask again whether anything else needs changing. Stop only when the user says it is done ("looks good", "that's
+it"). If a request conflicts with a hard rule (for example three characters on one slide), say so and offer the
+nearest option that fits. Slide numbers the user gives are 1-based and count each `dialogue` line as its own slide.
 
 ## The 9 hard rules
 
