@@ -84,21 +84,28 @@ The demos are rebuilt from `plugin/skills/explainimals/references/examples` and 
 
 ## Install
 
-Paste one of these prompts into your AI agent. It installs the skill for you, shows the plan and asks you once before it changes anything.
+In Claude Code, run these two commands in your terminal:
 
-Claude Code, or any other agent that can run commands:
-
-```text
-Install the Explainimals skill from https://github.com/darwiniquina/Explainimals by following https://raw.githubusercontent.com/darwiniquina/Explainimals/main/INSTALL.md
+```bash
+claude plugin marketplace add darwiniquina/Explainimals
+claude plugin install explainimals@explainimals
 ```
 
-Codex, which has a built-in `skill-installer` skill:
+Then restart Claude Code. Only the skill folder (`plugin/skills/explainimals`) is installed; the studio and the source art stay behind. The skill needs Node.js 18 or newer.
+
+Codex, which has a built-in `skill-installer` skill. Paste this prompt into Codex:
 
 ```text
 Use $skill-installer to install https://github.com/darwiniquina/Explainimals/tree/main/plugin/skills/explainimals
 ```
 
-Restart the agent afterwards. Only the skill folder (`plugin/skills/explainimals`) is installed; the studio and the source art stay behind. The skill needs Node.js 18 or newer.
+Any other agent that can run commands: paste this prompt into it. It installs the skill for you, shows the plan and asks you once before it changes anything.
+
+```text
+Install the Explainimals skill from https://github.com/darwiniquina/Explainimals by following https://raw.githubusercontent.com/darwiniquina/Explainimals/main/INSTALL.md
+```
+
+Restart the agent afterwards.
 
 The Claude.ai chat and the Claude desktop app cannot run commands, so there is no one-prompt install. [INSTALL.md](INSTALL.md) has the zip steps for those, and manual steps for every other agent.
 
